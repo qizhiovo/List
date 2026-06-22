@@ -2,7 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+  html, body { touch-action: manipulation; }
+</style>
 <title>生活规划清单</title>
 <style>
   :root {
@@ -88,19 +91,22 @@
   .top-tabs button { flex: 1; border: none; background: transparent; padding: 8px; font-size: 14px; color: var(--text-secondary); }
   .top-tabs button.active { background: var(--bg-card); color: var(--text); }
 
-  .row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
-  .row:last-child { border-bottom: none; }
+  .swipe-row { position: relative; overflow: hidden; border-bottom: 0.5px solid var(--border); }
+  .swipe-row:last-child { border-bottom: none; }
+  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; background: var(--bg); position: relative; transition: transform 0.15s ease-out; touch-action: pan-y; }
+  .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--danger-text); color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; }
   .check-btn { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
   .check-btn.done { background: var(--bg-secondary); border-color: var(--border); color: var(--text-tertiary); }
   .row-title { font-size: 15px; flex: 1; min-width: 0; }
   .row-sub { font-size: 12px; margin-top: 2px; }
-  .del-btn { border: none; background: none; padding: 6px; color: var(--text-tertiary); font-size: 16px; }
+  .del-btn { border: none; background: none; padding: 6px; color: var(--text-tertiary); font-size: 16px; flex-shrink: 0; }
 
   .section-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; margin-top: 4px; }
 
   .form-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-top: 16px; background: var(--bg-card); }
-  .type-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 10px; }
-  .type-btn { padding: 10px 4px; border-radius: var(--radius-md); font-size: 13px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); }
+  .type-grid { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .type-grid::-webkit-scrollbar { display: none; }
+  .type-btn { flex: 1; min-width: 60px; padding: 10px 4px; border-radius: var(--radius-md); font-size: 12px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); white-space: nowrap; }
   .type-btn.active { border-color: var(--info-border); background: var(--info-bg); color: var(--info-text); }
 
   .gantt-bar { position: absolute; cursor: default; }
@@ -113,10 +119,8 @@
   #auth-screen p { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
   #signin-btn { background: var(--info-text); color: white; border: none; padding: 12px 24px; border-radius: var(--radius-md); font-size: 15px; }
 
-  #sync-indicator { font-size: 12px; color: var(--text-tertiary); text-align: center; margin-bottom: 12px; }
-  .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .header-bar .user-email { font-size: 12px; color: var(--text-tertiary); }
-  .signout-link { font-size: 12px; color: var(--text-tertiary); background: none; border: none; padding: 4px; text-decoration: underline; }
+  .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; min-height: 20px; font-size: 12px; color: var(--text-tertiary); }
+  .signout-link { font-size: 12px; color: var(--text-tertiary); background: none; border: none; padding: 0; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -130,10 +134,9 @@
 
   <div id="app-screen" style="display:none;">
     <div class="header-bar">
-      <span class="user-email" id="user-email"></span>
+      <span id="sync-indicator"></span>
       <button class="signout-link" onclick="handleSignOut()">退出登录</button>
     </div>
-    <div id="sync-indicator"></div>
     <div id="app"></div>
   </div>
 </div>
@@ -237,7 +240,6 @@ function showAuthScreen() {
 async function onSignedIn() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'block';
-  document.getElementById('user-email').textContent = '已登录';
   setSyncStatus('正在加载数据…');
   await loadFromDrive();
 }
@@ -364,7 +366,7 @@ function rollForwardCycles() {
 function addTask(t) {
   tasks.push(Object.assign({ id: uid(), done: false, doneAt: null, progress: 0 }, t));
   scheduleSave();
-  render();
+  renderMain();
 }
 function toggleDone(id) {
   const t = tasks.find(x => x.id === id);
@@ -377,12 +379,12 @@ function toggleDone(id) {
     t.doneAt = t.done ? todayStr() : null;
   }
   scheduleSave();
-  render();
+  renderMain();
 }
 function deleteTask(id) {
   tasks = tasks.filter(x => x.id !== id);
   scheduleSave();
-  render();
+  renderMain();
 }
 
 function getTodayItems() {
@@ -426,15 +428,18 @@ function typeLabel(type, recurring) {
 function renderRow(t, label, isHabit, urgency) {
   const done = t.done;
   const color = isHabit ? 'var(--text-secondary)' : urgencyColor(urgency, done);
-  return '<div class="row">' +
-    '<button class="check-btn' + (done ? ' done' : '') + '" onclick="toggleDone(\'' + t.id + '\')">' + (done ? '✓' : '') + '</button>' +
-    '<div style="flex:1;min-width:0;">' +
-      '<div class="row-title" style="' + (done ? 'color:var(--text-tertiary);text-decoration:line-through;' : '') + '">' + escapeHtml(t.name) +
-        ((t.type === 'window' && t.recurring) || (t.type === 'quota' && t.recurring !== false) ? ' ↻' : '') +
+  return '<div class="swipe-row" data-id="' + t.id + '">' +
+    '<div class="swipe-delete-bg">删除</div>' +
+    '<div class="swipe-content">' +
+      '<button class="check-btn' + (done ? ' done' : '') + '" onclick="toggleDone(\'' + t.id + '\')">' + (done ? '✓' : '') + '</button>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div class="row-title" style="' + (done ? 'color:var(--text-tertiary);text-decoration:line-through;' : '') + '">' + escapeHtml(t.name) +
+          ((t.type === 'window' && t.recurring) || (t.type === 'quota' && t.recurring !== false) ? ' ↻' : '') +
+        '</div>' +
+        (label ? '<div class="row-sub" style="color:' + color + ';">' + label + '</div>' : '') +
       '</div>' +
-      (label ? '<div class="row-sub" style="color:' + color + ';">' + label + '</div>' : '') +
+      '<button class="del-btn" onclick="deleteTask(\'' + t.id + '\')">✕</button>' +
     '</div>' +
-    '<button class="del-btn" onclick="deleteTask(\'' + t.id + '\')">✕</button>' +
   '</div>';
 }
 
@@ -442,13 +447,16 @@ function renderAnniversaryRow(t) {
   const today = todayStr();
   const days = daysBetween(today, t.nextDate);
   const label = days === 0 ? '今天' : '还有 ' + days + ' 天';
-  return '<div class="row">' +
-    '<div class="anniv-icon" style="width:24px;text-align:center;">🎂</div>' +
-    '<div style="flex:1;min-width:0;">' +
-      '<div class="row-title">' + escapeHtml(t.name) + '</div>' +
-      '<div class="row-sub" style="color:var(--info-text);">' + label + ' · ' + fmtDate(t.nextDate) + '</div>' +
+  return '<div class="swipe-row" data-id="' + t.id + '">' +
+    '<div class="swipe-delete-bg">删除</div>' +
+    '<div class="swipe-content">' +
+      '<div class="anniv-icon" style="width:24px;text-align:center;">🎂</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div class="row-title">' + escapeHtml(t.name) + '</div>' +
+        '<div class="row-sub" style="color:var(--info-text);">' + label + ' · ' + fmtDate(t.nextDate) + '</div>' +
+      '</div>' +
+      '<button class="del-btn" onclick="deleteTask(\'' + t.id + '\')">✕</button>' +
     '</div>' +
-    '<button class="del-btn" onclick="deleteTask(\'' + t.id + '\')">✕</button>' +
   '</div>';
 }
 
@@ -558,7 +566,7 @@ function typeOptions() {
     { v: 'once', label: '一次性' }, { v: 'anniversary', label: '纪念日' }
   ];
   return '<div class="type-grid">' +
-    opts.map(o => '<button class="type-btn' + (selectedType===o.v?' active':'') + '" onclick="selectType(\'' + o.v + '\')">' + o.label + '</button>').join('') +
+    opts.map(o => '<button type="button" class="type-btn' + (selectedType===o.v?' active':'') + '" data-type="' + o.v + '" onclick="selectType(\'' + o.v + '\')">' + o.label + '</button>').join('') +
   '</div>';
 }
 
@@ -611,7 +619,13 @@ function selectAnnivUnit(u) {
   if (yb) yb.className = 'type-btn' + (u==='year' ? ' active' : '');
   if (mb) mb.className = 'type-btn' + (u==='month' ? ' active' : '');
 }
-function selectType(type) { selectedType = type; render(); }
+function selectType(type) {
+  selectedType = type;
+  document.querySelectorAll('.type-grid .type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+  refreshExtraFields();
+}
 
 function submitForm() {
   const nameEl = document.getElementById('f-name');
@@ -658,20 +672,30 @@ function renderForm() {
   '</div>';
 }
 
-function switchView(v) { currentView = v; render(); }
+function switchView(v) { currentView = v; renderMain(); }
+
+function renderMain() {
+  const main = document.getElementById('main-content');
+  main.innerHTML = (currentView === 'today' ? renderToday() : renderGantt());
+  attachSwipeHandlers();
+}
 
 function render() {
   const app = document.getElementById('app');
   const tab = (id, label) => '<button class="' + (currentView===id?'active':'') + '" onclick="switchView(\'' + id + '\')">' + label + '</button>';
-  let html = '<div class="top-tabs">' + tab('today','今天') + tab('overview','总览') + '</div>';
-  html += currentView === 'today' ? renderToday() : renderGantt();
-  html += renderForm();
-  app.innerHTML = html;
+  app.innerHTML =
+    '<div class="top-tabs">' + tab('today','今天') + tab('overview','总览') + '</div>' +
+    '<div id="main-content"></div>' +
+    renderForm();
+  renderMain();
+  refreshExtraFields();
+}
+
+function refreshExtraFields() {
   const extra = document.getElementById('f-extra');
-  if (extra) {
-    extra.innerHTML = renderExtraFields(selectedType);
-    if (selectedType === 'anniversary') selectAnnivUnit(selectedAnnivUnit);
-  }
+  if (!extra) return;
+  extra.innerHTML = renderExtraFields(selectedType);
+  if (selectedType === 'anniversary') selectAnnivUnit(selectedAnnivUnit);
 }
 
 window.toggleDone = toggleDone;
@@ -683,6 +707,52 @@ window.selectType = selectType;
 window.selectAnnivUnit = selectAnnivUnit;
 window.handleSignIn = handleSignIn;
 window.handleSignOut = handleSignOut;
+
+// ====== SWIPE TO DELETE ======
+function attachSwipeHandlers() {
+  document.querySelectorAll('.swipe-row').forEach(row => {
+    const content = row.querySelector('.swipe-content');
+    const id = row.dataset.id;
+    let startX = 0, startY = 0, currentX = 0, dragging = false, decided = false, isHorizontal = false;
+    const DELETE_WIDTH = 72;
+
+    content.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      currentX = 0;
+      dragging = true;
+      decided = false;
+      content.style.transition = 'none';
+    }, { passive: true });
+
+    content.addEventListener('touchmove', (e) => {
+      if (!dragging) return;
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if (!decided) {
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+          decided = true;
+          isHorizontal = Math.abs(dx) > Math.abs(dy);
+        } else {
+          return;
+        }
+      }
+      if (!isHorizontal) return;
+      currentX = Math.min(0, Math.max(dx, -DELETE_WIDTH - 20));
+      content.style.transform = 'translateX(' + currentX + 'px)';
+    }, { passive: true });
+
+    content.addEventListener('touchend', () => {
+      dragging = false;
+      content.style.transition = 'transform 0.15s ease-out';
+      if (isHorizontal && currentX < -DELETE_WIDTH / 2) {
+        content.style.transform = 'translateX(-' + DELETE_WIDTH + 'px)';
+      } else {
+        content.style.transform = 'translateX(0)';
+      }
+    });
+  });
+}
 </script>
 
 <script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
