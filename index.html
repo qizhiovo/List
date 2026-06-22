@@ -237,11 +237,8 @@ function showAuthScreen() {
 async function onSignedIn() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'block';
+  document.getElementById('user-email').textContent = '已登录';
   setSyncStatus('正在加载数据…');
-  try {
-    const userInfo = await driveFetch('https://www.googleapis.com/oauth2/v2/userinfo');
-    document.getElementById('user-email').textContent = userInfo.email || '';
-  } catch (e) {}
   await loadFromDrive();
 }
 
@@ -250,9 +247,7 @@ async function driveFetch(url, options) {
   options.headers = Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + accessToken });
   const res = await fetch(url, options);
   if (res.status === 401) {
-    sessionStorage.removeItem('lp_token');
-    showAuthScreen();
-    throw new Error('未授权，请重新登录');
+    throw new Error('授权已过期或权限不足 (401): ' + url);
   }
   if (!res.ok) {
     const text = await res.text();
@@ -286,9 +281,14 @@ async function loadFromDrive() {
     }
   } catch (e) {
     console.error(e);
+    if (String(e.message).indexOf('401') !== -1) {
+      sessionStorage.removeItem('lp_token');
+      showAuthScreen();
+      setSyncStatus('');
+      return;
+    }
     tasks = [];
-    setSyncStatus('加载失败，使用空白数据');
-    setTimeout(() => setSyncStatus(''), 2000);
+    setSyncStatus('加载失败: ' + e.message);
     render();
     return;
   }
