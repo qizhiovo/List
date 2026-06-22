@@ -369,6 +369,12 @@ function rollForwardCycles() {
         t.nextDate = t.anniversaryUnit === 'year' ? addYears(t.nextDate, 1) : addMonths(t.nextDate, 1);
       }
     }
+    if (t.type === 'habit') {
+      if (t.done && t.doneAt !== today) {
+        t.done = false;
+        t.doneAt = null;
+      }
+    }
   });
 }
 
@@ -403,7 +409,7 @@ function deleteTask(id) {
 
 function getTodayItems() {
   const today = todayStr();
-  const habits = tasks.filter(t => t.type === 'habit');
+  const habits = tasks.filter(t => t.type === 'habit').sort((a, b) => (a.done === b.done) ? 0 : (a.done ? 1 : -1));
   const anniversaries = tasks.filter(t => t.type === 'anniversary' && daysBetween(today, t.nextDate) >= 0 && daysBetween(today, t.nextDate) <= 10);
   const others = tasks.filter(t => t.type !== 'habit' && t.type !== 'anniversary').map(t => {
     let urgency = 999, label = '';
@@ -449,11 +455,11 @@ function typeBg(type) {
 function renderRow(t, label, isHabit, urgency) {
   const done = t.done;
   const color = isHabit ? 'var(--text-secondary)' : urgencyColor(urgency, done);
-  const bg = isHabit ? 'transparent' : (done ? 'var(--bg-secondary)' : typeBg(t.type));
-  const habitBorder = '';
+  const typedBg = isHabit ? 'var(--bg)' : (done ? 'var(--bg-secondary)' : typeBg(t.type));
+  const hasColor = typedBg !== 'var(--bg)';
   return '<div class="swipe-row" data-id="' + t.id + '"' + (isHabit ? ' style="margin-bottom:0;border-radius:0;"' : '') + '>' +
     '<button class="swipe-delete-bg" onclick="deleteTask(\'' + t.id + '\')">删除</button>' +
-    '<div class="swipe-content" style="background:' + bg + ';border-radius:' + (bg !== 'transparent' ? 'var(--radius-md)' : '0') + ';padding-left:' + (bg !== 'transparent' ? '10px' : '0') + ';padding-right:' + (bg !== 'transparent' ? '10px' : '0') + ';' + habitBorder + '">' +
+    '<div class="swipe-content" style="background:' + typedBg + ';border-radius:' + (hasColor ? 'var(--radius-md)' : '0') + ';padding-left:' + (hasColor ? '10px' : '0') + ';padding-right:' + (hasColor ? '10px' : '0') + ';">' +
       '<button class="check-btn' + (done ? ' done' : '') + '" onclick="toggleDone(\'' + t.id + '\')">' + (done ? '✓' : '') + '</button>' +
       '<div style="flex:1;min-width:0;">' +
         '<div class="row-title" style="' + (done ? 'color:var(--text-tertiary);text-decoration:line-through;' : '') + '">' + escapeHtml(t.name) +
@@ -565,7 +571,7 @@ function renderGantt() {
 
     html += '<div style="margin-bottom:' + (showDate ? 26 : 14) + 'px;">';
     html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:3px;display:flex;justify-content:space-between;gap:8px;">' +
-      '<span style="min-width:0;word-break:break-word;">' + escapeHtml(t.name) + (t.type==='quota' ? ' · ' + t.progress + '/' + t.target : '') + '</span>' +
+      '<span style="min-width:0;max-width:60%;word-break:break-word;">' + escapeHtml(t.name) + (t.type==='quota' ? ' · ' + t.progress + '/' + t.target : '') + '</span>' +
       '<span style="flex-shrink:0;">' + typeLabel(t.type, t.recurring) + '</span></div>';
     html += '<div style="position:relative;height:' + BAR_H + 'px;">';
     if (t.type === 'once') {
@@ -574,10 +580,16 @@ function renderGantt() {
     } else {
       const barWidthExpr = 'max(' + widthPct + '%, ' + BAR_H + 'px)';
       html += '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + barWidthExpr + ';height:' + BAR_H + 'px;background:' + colorBg + ';border-radius:' + (BAR_H/2) + 'px;"></div>';
-      // start date label: left-aligned to the bar's left edge
-      html += '<div style="position:absolute;left:' + offsetPct + '%;top:' + (BAR_H+4) + 'px;font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + fmtDate(start) + '</div>';
-      // end date label: right-aligned to the bar's right edge
-      html += '<div style="position:absolute;left:calc(' + offsetPct + '% + ' + barWidthExpr + ');top:' + (BAR_H+4) + 'px;transform:translateX(-100%);font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + fmtDate(end) + '</div>';
+      // Bars spanning less than ~22% of the timeline are too narrow to show
+      // separate start/end labels without overlapping text, so show a single
+      // combined "start – end" label instead, anchored like a point label.
+      if (widthPct < 22) {
+        const centerPct = Math.max(0, Math.min(offsetPct + widthPct / 2, 100));
+        html += dateLabelHtml(centerPct, fmtDate(start) + ' – ' + fmtDate(end), 0);
+      } else {
+        html += '<div style="position:absolute;left:' + offsetPct + '%;top:' + (BAR_H+4) + 'px;font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + fmtDate(start) + '</div>';
+        html += '<div style="position:absolute;left:calc(' + offsetPct + '% + ' + barWidthExpr + ');top:' + (BAR_H+4) + 'px;transform:translateX(-100%);font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + fmtDate(end) + '</div>';
+      }
     }
     html += '</div></div>';
   });
