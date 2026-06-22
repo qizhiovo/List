@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>生活规划清单</title>
+<style>
+  :root {
+    --bg: #faf9f6;
+    --bg-secondary: #f1efe8;
+    --bg-card: #ffffff;
+    --text: #2c2c2a;
+    --text-secondary: #5f5e5a;
+    --text-tertiary: #888780;
+    --border: rgba(0,0,0,0.12);
+    --border-strong: rgba(0,0,0,0.2);
+    --info-bg: #e6f1fb;
+    --info-text: #0c447c;
+    --info-border: #378add;
+    --warning-bg: #faeeda;
+    --warning-text: #854f0b;
+    --danger-bg: #fcebeb;
+    --danger-text: #a32d2d;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg-secondary: #2a2a27;
+      --bg-card: #232320;
+      --text: #ececea;
+      --text-secondary: #b4b2a9;
+      --text-tertiary: #888780;
+      --border: rgba(255,255,255,0.12);
+      --border-strong: rgba(255,255,255,0.2);
+      --info-bg: #0c447c;
+      --info-text: #b5d4f4;
+      --warning-bg: #633806;
+      --warning-text: #fac775;
+      --danger-bg: #791f1f;
+      --danger-text: #f7c1c1;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft Yahei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.5;
+    padding-bottom: 40px;
+  }
+  #container { max-width: 480px; margin: 0 auto; padding: 16px; }
+
+  input, select, button, textarea {
+    font-family: inherit;
+    font-size: 16px;
+  }
+  input[type="text"], input[type="date"], input[type="number"] {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    appearance: none;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--info-border);
+    box-shadow: 0 0 0 2px rgba(55,138,221,0.25);
+  }
+  button {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    background: var(--bg-card);
+    color: var(--text);
+    padding: 10px 14px;
+    cursor: pointer;
+  }
+  button:active { transform: scale(0.98); }
+  label { font-size: 13px; color: var(--text-secondary); }
+
+  .top-tabs { display: flex; gap: 4px; background: var(--bg-secondary); border-radius: var(--radius-md); padding: 3px; margin-bottom: 16px; }
+  .top-tabs button { flex: 1; border: none; background: transparent; padding: 8px; font-size: 14px; color: var(--text-secondary); }
+  .top-tabs button.active { background: var(--bg-card); color: var(--text); }
+
+  .row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .row:last-child { border-bottom: none; }
+  .check-btn { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .check-btn.done { background: var(--bg-secondary); border-color: var(--border); color: var(--text-tertiary); }
+  .row-title { font-size: 15px; flex: 1; min-width: 0; }
+  .row-sub { font-size: 12px; margin-top: 2px; }
+  .del-btn { border: none; background: none; padding: 6px; color: var(--text-tertiary); font-size: 16px; }
+
+  .section-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; margin-top: 4px; }
+
+  .form-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-top: 16px; background: var(--bg-card); }
+  .type-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 10px; }
+  .type-btn { padding: 10px 4px; border-radius: var(--radius-md); font-size: 13px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); }
+  .type-btn.active { border-color: var(--info-border); background: var(--info-bg); color: var(--info-text); }
+
+  .gantt-bar { position: absolute; cursor: default; }
+  .anniv-icon { color: var(--info-text); }
+
+  .empty-state { padding: 32px 0; text-align: center; color: var(--text-tertiary); font-size: 14px; }
+
+  #auth-screen { text-align: center; padding: 60px 20px; }
+  #auth-screen h1 { font-size: 20px; margin-bottom: 12px; }
+  #auth-screen p { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+  #signin-btn { background: var(--info-text); color: white; border: none; padding: 12px 24px; border-radius: var(--radius-md); font-size: 15px; }
+
+  #sync-indicator { font-size: 12px; color: var(--text-tertiary); text-align: center; margin-bottom: 12px; }
+  .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .header-bar .user-email { font-size: 12px; color: var(--text-tertiary); }
+  .signout-link { font-size: 12px; color: var(--text-tertiary); background: none; border: none; padding: 4px; text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div id="container">
+  <div id="auth-screen">
+    <h1>生活规划清单</h1>
+    <p>登录 Google 账号，数据将保存到你的 Google Drive，可在手机和电脑间同步。</p>
+    <button id="signin-btn" onclick="handleSignIn()">使用 Google 账号登录</button>
+  </div>
+
+  <div id="app-screen" style="display:none;">
+    <div class="header-bar">
+      <span class="user-email" id="user-email"></span>
+      <button class="signout-link" onclick="handleSignOut()">退出登录</button>
+    </div>
+    <div id="sync-indicator"></div>
+    <div id="app"></div>
+  </div>
+</div>
+
+<script>
+// ====== CONFIG ======
+const GOOGLE_CLIENT_ID = '740733190154-i102fo21rnqvfr35egnmv8m3vocbvb50.apps.googleusercontent.com';
+const DRIVE_FILE_NAME = 'life-planner-data.json';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+
+// ====== STATE ======
+let tasks = [];
+let currentView = 'today';
+let selectedType = 'habit';
+let selectedAnnivUnit = 'year';
+let tokenClient = null;
+let accessToken = null;
+let driveFileId = null;
+let saveTimer = null;
+
+// ====== DATE HELPERS ======
+function uid() { return 't' + Date.now() + Math.random().toString(36).slice(2, 7); }
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function addDays(s, n) {
+  const d = new Date(s + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function addMonths(s, n) {
+  const d = new Date(s + 'T00:00:00');
+  d.setMonth(d.getMonth() + n);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function addYears(s, n) {
+  const d = new Date(s + 'T00:00:00');
+  d.setFullYear(d.getFullYear() + n);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function daysBetween(a, b) {
+  const da = new Date(a + 'T00:00:00');
+  const db = new Date(b + 'T00:00:00');
+  return Math.round((db - da) / 86400000);
+}
+function fmtDate(s) {
+  const d = new Date(s + 'T00:00:00');
+  return (d.getMonth()+1) + '月' + d.getDate() + '日';
+}
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ====== GOOGLE AUTH ======
+function gisLoaded() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) {
+        alert('登录失败: ' + resp.error);
+        return;
+      }
+      accessToken = resp.access_token;
+      sessionStorage.setItem('lp_token', accessToken);
+      sessionStorage.setItem('lp_token_time', Date.now().toString());
+      await onSignedIn();
+    }
+  });
+
+  // try silent restore
+  const savedToken = sessionStorage.getItem('lp_token');
+  const savedTime = sessionStorage.getItem('lp_token_time');
+  if (savedToken && savedTime && (Date.now() - parseInt(savedTime)) < 50 * 60 * 1000) {
+    accessToken = savedToken;
+    onSignedIn().catch(() => { showAuthScreen(); });
+  } else {
+    showAuthScreen();
+  }
+}
+
+function handleSignIn() {
+  tokenClient.requestAccessToken();
+}
+
+function handleSignOut() {
+  accessToken = null;
+  sessionStorage.removeItem('lp_token');
+  sessionStorage.removeItem('lp_token_time');
+  showAuthScreen();
+}
+
+function showAuthScreen() {
+  document.getElementById('auth-screen').style.display = 'block';
+  document.getElementById('app-screen').style.display = 'none';
+}
+
+async function onSignedIn() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  setSyncStatus('正在加载数据…');
+  try {
+    const userInfo = await driveFetch('https://www.googleapis.com/oauth2/v2/userinfo');
+    document.getElementById('user-email').textContent = userInfo.email || '';
+  } catch (e) {}
+  await loadFromDrive();
+}
+
+async function driveFetch(url, options) {
+  options = options || {};
+  options.headers = Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + accessToken });
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    sessionStorage.removeItem('lp_token');
+    showAuthScreen();
+    throw new Error('未授权，请重新登录');
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error('请求失败: ' + res.status + ' ' + text);
+  }
+  const ct = res.headers.get('content-type') || '';
+  if (ct.indexOf('application/json') !== -1) return res.json();
+  return res.text();
+}
+
+function setSyncStatus(msg) {
+  document.getElementById('sync-indicator').textContent = msg || '';
+}
+
+// ====== DRIVE STORAGE (uses appDataFolder, hidden from user's normal Drive view) ======
+async function findDriveFile() {
+  const q = encodeURIComponent("name='" + DRIVE_FILE_NAME + "' and trashed=false");
+  const data = await driveFetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=' + q + '&fields=files(id,name)');
+  if (data.files && data.files.length > 0) return data.files[0].id;
+  return null;
+}
+
+async function loadFromDrive() {
+  try {
+    driveFileId = await findDriveFile();
+    if (driveFileId) {
+      const content = await driveFetch('https://www.googleapis.com/drive/v3/files/' + driveFileId + '?alt=media');
+      tasks = typeof content === 'string' ? JSON.parse(content) : content;
+    } else {
+      tasks = [];
+    }
+  } catch (e) {
+    console.error(e);
+    tasks = [];
+    setSyncStatus('加载失败，使用空白数据');
+    setTimeout(() => setSyncStatus(''), 2000);
+    render();
+    return;
+  }
+  rollForwardCycles();
+  setSyncStatus('已从 Google Drive 加载');
+  setTimeout(() => setSyncStatus(''), 1500);
+  render();
+}
+
+function scheduleSave() {
+  setSyncStatus('保存中…');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToDrive, 600);
+}
+
+async function saveToDrive() {
+  try {
+    const content = JSON.stringify(tasks);
+    if (!driveFileId) {
+      const metadata = { name: DRIVE_FILE_NAME, parents: ['appDataFolder'] };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', new Blob([content], { type: 'application/json' }));
+      const created = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+        method: 'POST', body: form
+      });
+      driveFileId = created.id;
+    } else {
+      await driveFetch('https://www.googleapis.com/upload/drive/v3/files/' + driveFileId + '?uploadType=media', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: content
+      });
+    }
+    setSyncStatus('已同步');
+    setTimeout(() => setSyncStatus(''), 1200);
+  } catch (e) {
+    console.error(e);
+    setSyncStatus('同步失败，将重试');
+  }
+}
+
+// ====== TASK LOGIC ======
+function rollForwardCycles() {
+  const today = todayStr();
+  tasks.forEach(t => {
+    if (t.type === 'window' && t.recurring) {
+      while (today > t.end) {
+        const span = daysBetween(t.start, t.end);
+        const nextStart = t.cycleUnit === 'month' ? addMonths(t.start, 1) : addDays(t.start, 7);
+        t.start = nextStart;
+        t.end = addDays(nextStart, span);
+        t.done = false; t.doneAt = null;
+      }
+    }
+    if (t.type === 'quota') {
+      while (today > t.end) {
+        const span = daysBetween(t.start, t.end);
+        const nextStart = addDays(t.start, t.cycleDays || 7);
+        t.start = nextStart;
+        t.end = addDays(nextStart, span);
+        t.done = false; t.progress = 0;
+      }
+    }
+    if (t.type === 'anniversary') {
+      while (today > t.nextDate) {
+        t.nextDate = t.anniversaryUnit === 'year' ? addYears(t.nextDate, 1) : addMonths(t.nextDate, 1);
+      }
+    }
+  });
+}
+
+function addTask(t) {
+  tasks.push(Object.assign({ id: uid(), done: false, doneAt: null, progress: 0 }, t));
+  scheduleSave();
+  render();
+}
+function toggleDone(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  if (t.type === 'quota') {
+    t.progress = Math.min(t.progress + 1, t.target);
+    if (t.progress >= t.target) t.done = true;
+  } else {
+    t.done = !t.done;
+    t.doneAt = t.done ? todayStr() : null;
+  }
+  scheduleSave();
+  render();
+}
+function deleteTask(id) {
+  tasks = tasks.filter(x => x.id !== id);
+  scheduleSave();
+  render();
+}
+
+function getTodayItems() {
+  const today = todayStr();
+  const habits = tasks.filter(t => t.type === 'habit');
+  const anniversaries = tasks.filter(t => t.type === 'anniversary' && daysBetween(today, t.nextDate) >= 0 && daysBetween(today, t.nextDate) <= 10);
+  const others = tasks.filter(t => t.type !== 'habit' && t.type !== 'anniversary').map(t => {
+    let urgency = 999, label = '';
+    if (t.type === 'window') {
+      if (today < t.start || today > t.end) return null;
+      urgency = t.done ? 999 : daysBetween(today, t.end);
+      label = (t.recurring ? '本周期 ' : '') + '最晚 ' + fmtDate(t.end);
+    } else if (t.type === 'quota') {
+      if (today < t.start || today > t.end) return null;
+      urgency = t.done ? 999 : daysBetween(today, t.end);
+      label = t.cycleDays + '天周期内 · ' + t.progress + '/' + t.target + '次';
+    } else if (t.type === 'once') {
+      if (t.date !== today) return null;
+      urgency = daysBetween(today, t.date);
+      label = fmtDate(t.date);
+    }
+    return { t, urgency, label };
+  }).filter(Boolean);
+  others.sort((a, b) => a.t.done !== b.t.done ? (a.t.done ? 1 : -1) : a.urgency - b.urgency);
+  anniversaries.sort((a, b) => daysBetween(today, a.nextDate) - daysBetween(today, b.nextDate));
+  return { habits, anniversaries, others };
+}
+
+function urgencyColor(urgency, done) {
+  if (done) return 'var(--text-tertiary)';
+  if (urgency <= 1) return 'var(--danger-text)';
+  if (urgency <= 3) return 'var(--warning-text)';
+  return 'var(--text-secondary)';
+}
+function typeLabel(type, recurring) {
+  if (type === 'window') return recurring ? '循环窗口' : '窗口';
+  if (type === 'quota') return recurring === false ? '配额' : '配额(循环)';
+  return { habit: '习惯', once: '一次性', anniversary: '纪念日' }[type] || type;
+}
+
+function renderRow(t, label, isHabit, urgency) {
+  const done = t.done;
+  const color = isHabit ? 'var(--text-secondary)' : urgencyColor(urgency, done);
+  return '<div class="row">' +
+    '<button class="check-btn' + (done ? ' done' : '') + '" onclick="toggleDone(\'' + t.id + '\')">' + (done ? '✓' : '') + '</button>' +
+    '<div style="flex:1;min-width:0;">' +
+      '<div class="row-title" style="' + (done ? 'color:var(--text-tertiary);text-decoration:line-through;' : '') + '">' + escapeHtml(t.name) +
+        ((t.type === 'window' && t.recurring) || (t.type === 'quota' && t.recurring !== false) ? ' ↻' : '') +
+      '</div>' +
+      (label ? '<div class="row-sub" style="color:' + color + ';">' + label + '</div>' : '') +
+    '</div>' +
+    '<button class="del-btn" onclick="deleteTask(\'' + t.id + '\')">✕</button>' +
+  '</div>';
+}
+
+function renderAnniversaryRow(t) {
+  const today = todayStr();
+  const days = daysBetween(today, t.nextDate);
+  const label = days === 0 ? '今天' : '还有 ' + days + ' 天';
+  return '<div class="row">' +
+    '<div class="anniv-icon" style="width:24px;text-align:center;">🎂</div>' +
+    '<div style="flex:1;min-width:0;">' +
+      '<div class="row-title">' + escapeHtml(t.name) + '</div>' +
+      '<div class="row-sub" style="color:var(--info-text);">' + label + ' · ' + fmtDate(t.nextDate) + '</div>' +
+    '</div>' +
+    '<button class="del-btn" onclick="deleteTask(\'' + t.id + '\')">✕</button>' +
+  '</div>';
+}
+
+function renderToday() {
+  const { habits, anniversaries, others } = getTodayItems();
+  let html = '';
+  if (anniversaries.length) {
+    html += '<div class="section-label">临近的纪念日</div>';
+    anniversaries.forEach(t => html += renderAnniversaryRow(t));
+  }
+  if (habits.length) {
+    html += '<div class="section-label">今天的习惯</div>';
+    habits.forEach(t => html += renderRow(t, null, true));
+  }
+  if (others.length === 0 && habits.length === 0 && anniversaries.length === 0) {
+    html += '<div class="empty-state">还没有任务，点下面添加一个</div>';
+  } else if (others.length) {
+    html += '<div class="section-label">需要关注的事</div>';
+    others.forEach(o => html += renderRow(o.t, o.label, false, o.urgency));
+  }
+  return html;
+}
+
+function getGanttRange() {
+  const today = todayStr();
+  const relevant = tasks.filter(t => t.type === 'window' || t.type === 'quota' || t.type === 'once');
+  if (relevant.length === 0) return null;
+  let minStart = null, maxEnd = null;
+  relevant.forEach(t => {
+    const start = t.type === 'once' ? t.date : t.start;
+    const end = t.type === 'once' ? t.date : t.end;
+    if (!t.done && (minStart === null || start < minStart)) minStart = start;
+    if (maxEnd === null || end > maxEnd) maxEnd = end;
+  });
+  if (minStart === null) minStart = today;
+  if (minStart > today) minStart = today;
+  const anniversariesInRange = tasks.filter(t => t.type === 'anniversary' && t.nextDate >= minStart && t.nextDate <= maxEnd);
+  return { start: minStart, end: maxEnd, tasks: relevant, anniversaries: anniversariesInRange };
+}
+
+const BAR_H = 18;
+function dateLabelHtml(offsetPct, text) {
+  let transform = 'translateX(-50%)';
+  if (offsetPct < 8) transform = 'translateX(0%)';
+  else if (offsetPct > 92) transform = 'translateX(-100%)';
+  return '<div style="position:absolute;left:' + offsetPct + '%;top:' + (BAR_H+4) + 'px;transform:' + transform + ';font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
+}
+
+function renderGantt() {
+  const range = getGanttRange();
+  if (!range) return '<div class="empty-state">还没有窗口/配额/一次性任务</div>';
+  const today = todayStr();
+  const totalDays = Math.max(daysBetween(range.start, range.end), 1);
+
+  let html = '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">' +
+    '<span>' + fmtDate(range.start) + '（今天）</span><span>' + fmtDate(range.end) + '</span></div>';
+  html += '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:10px;">起点取未完成任务中最早的开始日，终点取所有任务中最晚的结束日</div>';
+  html += '<div style="position:relative;">';
+
+  range.anniversaries.forEach(a => {
+    const offsetPct = Math.max(0, Math.min(daysBetween(range.start, a.nextDate) / totalDays * 100, 100));
+    const showDate = a.nextDate !== today;
+    html += '<div style="margin-bottom:' + (showDate ? 26 : 14) + 'px;">';
+    html += '<div style="font-size:12px;color:var(--info-text);margin-bottom:3px;">🎂 ' + escapeHtml(a.name) + '</div>';
+    html += '<div style="position:relative;height:' + BAR_H + 'px;">' +
+      '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + BAR_H + 'px;height:' + BAR_H + 'px;background:var(--info-bg);border-radius:50%;"></div>' +
+      (showDate ? dateLabelHtml(offsetPct, fmtDate(a.nextDate)) : '') +
+    '</div></div>';
+  });
+
+  range.tasks.sort((a, b) => {
+    const as = a.type === 'once' ? a.date : a.start;
+    const bs = b.type === 'once' ? b.date : b.start;
+    return as < bs ? -1 : 1;
+  });
+
+  range.tasks.forEach(t => {
+    const start = t.type === 'once' ? t.date : t.start;
+    const end = t.type === 'once' ? t.date : t.end;
+    const offsetPct = daysBetween(range.start, start) / totalDays * 100;
+    const widthPct = daysBetween(start, end) / totalDays * 100;
+    const colorBg = t.type === 'window' ? 'var(--warning-bg)' : t.type === 'quota' ? 'var(--info-bg)' : 'var(--danger-bg)';
+    const dateLabel = t.type === 'once' ? fmtDate(t.date) : (fmtDate(start) + ' – ' + fmtDate(end));
+    const showDate = !(t.type === 'once' && t.date === today);
+
+    html += '<div style="margin-bottom:' + (showDate ? 26 : 14) + 'px;">';
+    html += '<div style="font-size:12px;color:' + (t.done ? 'var(--text-tertiary)' : 'var(--text-secondary)') + ';margin-bottom:3px;display:flex;justify-content:space-between;gap:8px;">' +
+      '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(t.name) + (t.type==='quota' ? ' · ' + t.progress + '/' + t.target : '') + '</span>' +
+      '<span style="flex-shrink:0;">' + typeLabel(t.type, t.recurring) + '</span></div>';
+    html += '<div style="position:relative;height:' + BAR_H + 'px;">';
+    if (t.type === 'once') {
+      html += '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + BAR_H + 'px;height:' + BAR_H + 'px;background:' + colorBg + ';border-radius:50%;opacity:' + (t.done ? 0.4 : 1) + ';"></div>';
+    } else {
+      html += '<div class="gantt-bar" style="left:' + offsetPct + '%;width:max(' + widthPct + '%, ' + BAR_H + 'px);height:' + BAR_H + 'px;background:' + colorBg + ';border-radius:' + (BAR_H/2) + 'px;opacity:' + (t.done ? 0.4 : 1) + ';"></div>';
+    }
+    if (showDate) html += dateLabelHtml(offsetPct, dateLabel);
+    html += '</div></div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+function typeOptions() {
+  const opts = [
+    { v: 'habit', label: '习惯' }, { v: 'window', label: '窗口' }, { v: 'quota', label: '配额' },
+    { v: 'once', label: '一次性' }, { v: 'anniversary', label: '纪念日' }
+  ];
+  return '<div class="type-grid">' +
+    opts.map(o => '<button class="type-btn' + (selectedType===o.v?' active':'') + '" onclick="selectType(\'' + o.v + '\')">' + o.label + '</button>').join('') +
+  '</div>';
+}
+
+function renderExtraFields(type) {
+  const today = todayStr();
+  if (type === 'habit') return '';
+  if (type === 'window') {
+    return '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
+      '<input type="date" id="f-start" value="' + today + '" style="flex:1;" />' +
+      '<input type="date" id="f-end" value="' + today + '" style="flex:1;" />' +
+    '</div>' +
+    '<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">' +
+      '<input type="checkbox" id="f-recurring" onchange="onRecurringChange()" style="width:auto;" /> 这个窗口会循环出现</label>' +
+    '<div id="f-recur-extra"></div>';
+  }
+  if (type === 'quota') {
+    return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
+      '<input type="number" id="f-target" min="1" value="1" placeholder="次数" style="flex:1;" />' +
+      '<span style="font-size:13px;color:var(--text-secondary);">次/每</span>' +
+      '<input type="number" id="f-cycledays" min="1" value="7" placeholder="天数" style="flex:1;" />' +
+      '<span style="font-size:13px;color:var(--text-secondary);">天</span></div>' +
+    '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;">周期从今天开始算，比如填7天就是今天到 ' + addDays(today,7) + '</div>' +
+    '<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">' +
+      '<input type="checkbox" id="f-quota-recurring" checked style="width:auto;" /> 周期结束后自动开始下一轮</label>';
+  }
+  if (type === 'once') {
+    return '<input type="date" id="f-date" value="' + today + '" style="width:100%;margin-bottom:8px;" />';
+  }
+  if (type === 'anniversary') {
+    return '<input type="date" id="f-anniv-date" value="' + today + '" style="width:100%;margin-bottom:8px;" />' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">' +
+      '<button type="button" class="type-btn' + (selectedAnnivUnit==='year'?' active':'') + '" id="f-anniv-year-btn" onclick="selectAnnivUnit(\'year\')">每年提醒</button>' +
+      '<button type="button" class="type-btn' + (selectedAnnivUnit==='month'?' active':'') + '" id="f-anniv-month-btn" onclick="selectAnnivUnit(\'month\')">每月提醒</button>' +
+    '</div>';
+  }
+  return '';
+}
+
+function renderRecurExtra() {
+  const checked = document.getElementById('f-recurring') && document.getElementById('f-recurring').checked;
+  if (!checked) return '';
+  return '<select id="f-cycle-unit" style="width:100%;height:40px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);margin-bottom:8px;">' +
+    '<option value="month">每月循环</option><option value="week">每周循环</option></select>';
+}
+function onRecurringChange() { document.getElementById('f-recur-extra').innerHTML = renderRecurExtra(); }
+
+function selectAnnivUnit(u) {
+  selectedAnnivUnit = u;
+  const yb = document.getElementById('f-anniv-year-btn'), mb = document.getElementById('f-anniv-month-btn');
+  if (yb) yb.className = 'type-btn' + (u==='year' ? ' active' : '');
+  if (mb) mb.className = 'type-btn' + (u==='month' ? ' active' : '');
+}
+function selectType(type) { selectedType = type; render(); }
+
+function submitForm() {
+  const nameEl = document.getElementById('f-name');
+  const name = nameEl.value.trim();
+  const type = selectedType;
+  if (!name) { nameEl.focus(); return; }
+
+  if (type === 'habit') {
+    addTask({ type, name });
+  } else if (type === 'window') {
+    const start = document.getElementById('f-start').value;
+    const end = document.getElementById('f-end').value;
+    if (!start || !end || end < start) return;
+    const recurring = document.getElementById('f-recurring').checked;
+    const cycleUnit = recurring ? document.getElementById('f-cycle-unit').value : null;
+    addTask({ type, name, start, end, recurring, cycleUnit });
+  } else if (type === 'quota') {
+    const target = parseInt(document.getElementById('f-target').value) || 1;
+    const cycleDays = parseInt(document.getElementById('f-cycledays').value) || 7;
+    const recurring = document.getElementById('f-quota-recurring').checked;
+    const start = todayStr();
+    const end = addDays(start, cycleDays);
+    addTask({ type, name, start, end, target, cycleDays, recurring });
+  } else if (type === 'once') {
+    const date = document.getElementById('f-date').value;
+    if (!date) return;
+    addTask({ type, name, date });
+  } else if (type === 'anniversary') {
+    const date = document.getElementById('f-anniv-date').value;
+    if (!date) return;
+    addTask({ type, name, nextDate: date, anniversaryUnit: selectedAnnivUnit });
+  }
+  nameEl.value = '';
+  nameEl.focus();
+}
+
+function renderForm() {
+  return '<div class="form-card">' +
+    '<div class="section-label">添加任务</div>' +
+    '<input type="text" id="f-name" placeholder="任务名称" autocomplete="off" style="margin-bottom:10px;" />' +
+    typeOptions() +
+    '<div id="f-extra"></div>' +
+    '<button onclick="submitForm()" style="width:100%;margin-top:4px;">添加</button>' +
+  '</div>';
+}
+
+function switchView(v) { currentView = v; render(); }
+
+function render() {
+  const app = document.getElementById('app');
+  const tab = (id, label) => '<button class="' + (currentView===id?'active':'') + '" onclick="switchView(\'' + id + '\')">' + label + '</button>';
+  let html = '<div class="top-tabs">' + tab('today','今天') + tab('overview','总览') + '</div>';
+  html += currentView === 'today' ? renderToday() : renderGantt();
+  html += renderForm();
+  app.innerHTML = html;
+  const extra = document.getElementById('f-extra');
+  if (extra) {
+    extra.innerHTML = renderExtraFields(selectedType);
+    if (selectedType === 'anniversary') selectAnnivUnit(selectedAnnivUnit);
+  }
+}
+
+window.toggleDone = toggleDone;
+window.deleteTask = deleteTask;
+window.switchView = switchView;
+window.onRecurringChange = onRecurringChange;
+window.submitForm = submitForm;
+window.selectType = selectType;
+window.selectAnnivUnit = selectAnnivUnit;
+window.handleSignIn = handleSignIn;
+window.handleSignOut = handleSignOut;
+</script>
+
+<script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
+</body>
+</html>
