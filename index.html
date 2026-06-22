@@ -2,9 +2,9 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <style>
-  html, body { touch-action: manipulation; }
+  html, body, * { touch-action: manipulation; }
 </style>
 <title>生活规划清单</title>
 <style>
@@ -87,13 +87,13 @@
   button:active { transform: scale(0.98); }
   label { font-size: 13px; color: var(--text-secondary); }
 
-  .top-tabs { display: flex; gap: 4px; background: var(--bg-secondary); border-radius: var(--radius-md); padding: 3px; margin-bottom: 16px; }
-  .top-tabs button { flex: 1; border: none; background: transparent; padding: 8px; font-size: 14px; color: var(--text-secondary); }
-  .top-tabs button.active { background: var(--bg-card); color: var(--text); }
+  .top-tabs { display: flex; gap: 4px; background: var(--bg-secondary); border-radius: var(--radius-md); padding: 3px; margin-bottom: 16px; position: relative; }
+  .top-tabs .tab-slider { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 5px); background: var(--bg-card); border-radius: calc(var(--radius-md) - 2px); transition: transform 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+  .top-tabs button { flex: 1; border: none; background: transparent; padding: 8px; font-size: 14px; color: var(--text-secondary); position: relative; z-index: 1; }
+  .top-tabs button.active { color: var(--text); }
 
-  .swipe-row { position: relative; overflow: hidden; border-bottom: 0.5px solid var(--border); }
-  .swipe-row:last-child { border-bottom: none; }
-  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; background: var(--bg); position: relative; transition: transform 0.15s ease-out; touch-action: pan-y; }
+  .swipe-row { position: relative; overflow: hidden; margin-bottom: 6px; border-radius: var(--radius-md); }
+  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; transition: transform 0.15s ease-out, opacity 0.15s; touch-action: pan-y; }
   .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--danger-text); color: white; border: none; font-size: 14px; cursor: pointer; }
   .check-btn { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
   .check-btn.done { background: var(--bg-secondary); border-color: var(--border); color: var(--text-tertiary); }
@@ -104,9 +104,13 @@
   .section-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; margin-top: 4px; }
 
   .form-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-top: 16px; background: var(--bg-card); }
-  .type-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 10px; }
-  .type-btn { padding: 10px 4px; border-radius: var(--radius-md); font-size: 13px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); }
-  .type-btn.active { border-color: var(--info-border); background: var(--info-bg); color: var(--info-text); }
+  .type-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .type-btn { padding: 10px 12px; border-radius: var(--radius-md); font-size: 14px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); text-align: left; }
+  .type-btn[data-type="habit"].active { border-color: var(--border-strong); background: var(--bg-secondary); color: var(--text); }
+  .type-btn[data-type="window"].active { border-color: var(--warning-text); background: var(--warning-bg); color: var(--warning-text); }
+  .type-btn[data-type="quota"].active { border-color: var(--info-border); background: var(--info-bg); color: var(--info-text); }
+  .type-btn[data-type="once"].active { border-color: var(--danger-text); background: var(--danger-bg); color: var(--danger-text); }
+  .type-btn[data-type="anniversary"].active { border-color: var(--info-border); background: var(--info-bg); color: var(--info-text); }
 
   .gantt-bar { position: absolute; cursor: default; }
   .anniv-icon { color: var(--info-text); }
@@ -424,12 +428,21 @@ function typeLabel(type, recurring) {
   return { habit: '习惯', once: '一次性', anniversary: '纪念日' }[type] || type;
 }
 
+function typeBg(type) {
+  if (type === 'window') return 'var(--warning-bg)';
+  if (type === 'quota') return 'var(--info-bg)';
+  if (type === 'once') return 'var(--danger-bg)';
+  return 'transparent';
+}
+
 function renderRow(t, label, isHabit, urgency) {
   const done = t.done;
   const color = isHabit ? 'var(--text-secondary)' : urgencyColor(urgency, done);
-  return '<div class="swipe-row" data-id="' + t.id + '">' +
+  const bg = isHabit ? 'transparent' : typeBg(t.type);
+  const habitBorder = isHabit ? 'border-bottom:0.5px solid var(--border);' : '';
+  return '<div class="swipe-row" data-id="' + t.id + '"' + (isHabit ? ' style="margin-bottom:0;border-radius:0;"' : '') + '>' +
     '<button class="swipe-delete-bg" onclick="deleteTask(\'' + t.id + '\')">删除</button>' +
-    '<div class="swipe-content">' +
+    '<div class="swipe-content" style="background:' + bg + ';border-radius:' + (bg !== 'transparent' ? 'var(--radius-md)' : '0') + ';padding-left:' + (bg !== 'transparent' ? '10px' : '0') + ';padding-right:' + (bg !== 'transparent' ? '10px' : '0') + ';opacity:' + (done ? 0.55 : 1) + ';' + habitBorder + '">' +
       '<button class="check-btn' + (done ? ' done' : '') + '" onclick="toggleDone(\'' + t.id + '\')">' + (done ? '✓' : '') + '</button>' +
       '<div style="flex:1;min-width:0;">' +
         '<div class="row-title" style="' + (done ? 'color:var(--text-tertiary);text-decoration:line-through;' : '') + '">' + escapeHtml(t.name) +
@@ -447,8 +460,8 @@ function renderAnniversaryRow(t) {
   const label = days === 0 ? '今天' : '还有 ' + days + ' 天';
   return '<div class="swipe-row" data-id="' + t.id + '">' +
     '<button class="swipe-delete-bg" onclick="deleteTask(\'' + t.id + '\')">删除</button>' +
-    '<div class="swipe-content">' +
-      '<div class="anniv-icon" style="width:24px;text-align:center;">🎂</div>' +
+    '<div class="swipe-content" style="background:var(--info-bg);border-radius:var(--radius-md);padding-left:10px;padding-right:10px;">' +
+      '<div class="anniv-icon" style="width:24px;text-align:center;">🤍</div>' +
       '<div style="flex:1;min-width:0;">' +
         '<div class="row-title">' + escapeHtml(t.name) + '</div>' +
         '<div class="row-sub" style="color:var(--info-text);">' + label + ' · ' + fmtDate(t.nextDate) + '</div>' +
@@ -517,7 +530,7 @@ function renderGantt() {
     const offsetPct = Math.max(0, Math.min(daysBetween(range.start, a.nextDate) / totalDays * 100, 100));
     const showDate = a.nextDate !== today;
     html += '<div style="margin-bottom:' + (showDate ? 26 : 14) + 'px;">';
-    html += '<div style="font-size:12px;color:var(--info-text);margin-bottom:3px;">🎂 ' + escapeHtml(a.name) + '</div>';
+    html += '<div style="font-size:12px;color:var(--info-text);margin-bottom:3px;">🤍 ' + escapeHtml(a.name) + '</div>';
     html += '<div style="position:relative;height:' + BAR_H + 'px;">' +
       '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + BAR_H + 'px;height:' + BAR_H + 'px;background:var(--info-bg);border-radius:50%;"></div>' +
       (showDate ? dateLabelHtml(offsetPct, fmtDate(a.nextDate)) : '') +
@@ -669,7 +682,15 @@ function renderForm() {
   '</div>';
 }
 
-function switchView(v) { currentView = v; renderMain(); }
+function switchView(v) {
+  currentView = v;
+  const slider = document.getElementById('tab-slider');
+  if (slider) slider.style.transform = v === 'today' ? 'translateX(0)' : 'translateX(calc(100% + 4px))';
+  document.querySelectorAll('.top-tabs button[data-view]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === v);
+  });
+  renderMain();
+}
 
 function renderMain() {
   const main = document.getElementById('main-content');
@@ -679,9 +700,12 @@ function renderMain() {
 
 function render() {
   const app = document.getElementById('app');
-  const tab = (id, label) => '<button class="' + (currentView===id?'active':'') + '" onclick="switchView(\'' + id + '\')">' + label + '</button>';
+  const tab = (id, label) => '<button data-view="' + id + '" class="' + (currentView===id?'active':'') + '" onclick="switchView(\'' + id + '\')">' + label + '</button>';
   app.innerHTML =
-    '<div class="top-tabs">' + tab('today','今天') + tab('overview','总览') + '</div>' +
+    '<div class="top-tabs">' +
+      '<div class="tab-slider" id="tab-slider" style="transform:' + (currentView==='today' ? 'translateX(0)' : 'translateX(calc(100% + 4px))') + ';"></div>' +
+      tab('today','今天') + tab('overview','总览') +
+    '</div>' +
     '<div id="main-content"></div>' +
     renderForm();
   renderMain();
@@ -704,6 +728,16 @@ window.selectType = selectType;
 window.selectAnnivUnit = selectAnnivUnit;
 window.handleSignIn = handleSignIn;
 window.handleSignOut = handleSignOut;
+
+// Extra safety net against double-tap-to-zoom on browsers that ignore touch-action in edge cases
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(e) {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 350) {
+    e.preventDefault();
+  }
+  lastTouchEnd = now;
+}, { passive: false });
 
 // ====== SWIPE TO DELETE ======
 function attachSwipeHandlers() {
