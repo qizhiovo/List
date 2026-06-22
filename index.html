@@ -98,9 +98,9 @@
   .top-tabs button { flex: 1; border: none; background: transparent; padding: 8px; font-size: 14px; color: var(--text-secondary); position: relative; z-index: 1; }
   .top-tabs button.active { color: var(--text); }
 
-  .swipe-row { position: relative; overflow: hidden; margin-bottom: 6px; border-radius: var(--radius-md); }
-  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; width: 100%; box-sizing: border-box; background-color: var(--bg); transition: transform 0.15s ease-out, opacity 0.15s; touch-action: pan-y; }
-  .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--danger-text); color: white; border: none; font-size: 14px; cursor: pointer; }
+  .swipe-row { position: relative; margin-bottom: 6px; border-radius: var(--radius-md); clip-path: inset(0); }
+  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; width: 100%; box-sizing: border-box; background-color: var(--bg); transition: transform 0.15s ease-out; touch-action: pan-y; z-index: 2; }
+  .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--danger-text); color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
   .check-btn { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
   .check-btn.done { background: var(--bg-secondary); border-color: var(--border); color: var(--text-tertiary); }
   .row-title { font-size: 15px; flex: 1; min-width: 0; }
@@ -381,8 +381,13 @@ function toggleDone(id) {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
   if (t.type === 'quota') {
-    t.progress = Math.min(t.progress + 1, t.target);
-    if (t.progress >= t.target) t.done = true;
+    if (t.done) {
+      t.done = false;
+      t.progress = Math.max(0, t.progress - 1);
+    } else {
+      t.progress = Math.min(t.progress + 1, t.target);
+      if (t.progress >= t.target) t.done = true;
+    }
   } else {
     t.done = !t.done;
     t.doneAt = t.done ? todayStr() : null;
@@ -444,11 +449,11 @@ function typeBg(type) {
 function renderRow(t, label, isHabit, urgency) {
   const done = t.done;
   const color = isHabit ? 'var(--text-secondary)' : urgencyColor(urgency, done);
-  const bg = isHabit ? 'transparent' : typeBg(t.type);
-  const habitBorder = isHabit ? 'border-bottom:0.5px solid var(--border);' : '';
+  const bg = isHabit ? 'transparent' : (done ? 'var(--bg-secondary)' : typeBg(t.type));
+  const habitBorder = '';
   return '<div class="swipe-row" data-id="' + t.id + '"' + (isHabit ? ' style="margin-bottom:0;border-radius:0;"' : '') + '>' +
     '<button class="swipe-delete-bg" onclick="deleteTask(\'' + t.id + '\')">删除</button>' +
-    '<div class="swipe-content" style="background:' + bg + ';border-radius:' + (bg !== 'transparent' ? 'var(--radius-md)' : '0') + ';padding-left:' + (bg !== 'transparent' ? '10px' : '0') + ';padding-right:' + (bg !== 'transparent' ? '10px' : '0') + ';opacity:' + (done ? 0.55 : 1) + ';' + habitBorder + '">' +
+    '<div class="swipe-content" style="background:' + bg + ';border-radius:' + (bg !== 'transparent' ? 'var(--radius-md)' : '0') + ';padding-left:' + (bg !== 'transparent' ? '10px' : '0') + ';padding-right:' + (bg !== 'transparent' ? '10px' : '0') + ';' + habitBorder + '">' +
       '<button class="check-btn' + (done ? ' done' : '') + '" onclick="toggleDone(\'' + t.id + '\')">' + (done ? '✓' : '') + '</button>' +
       '<div style="flex:1;min-width:0;">' +
         '<div class="row-title" style="' + (done ? 'color:var(--text-tertiary);text-decoration:line-through;' : '') + '">' + escapeHtml(t.name) +
@@ -498,13 +503,13 @@ function renderToday() {
 
 function getGanttRange() {
   const today = todayStr();
-  const relevant = tasks.filter(t => t.type === 'window' || t.type === 'quota' || t.type === 'once');
+  const relevant = tasks.filter(t => (t.type === 'window' || t.type === 'quota' || t.type === 'once') && !t.done);
   if (relevant.length === 0) return null;
   let minStart = null, maxEnd = null;
   relevant.forEach(t => {
     const start = t.type === 'once' ? t.date : t.start;
     const end = t.type === 'once' ? t.date : t.end;
-    if (!t.done && (minStart === null || start < minStart)) minStart = start;
+    if (minStart === null || start < minStart) minStart = start;
     if (maxEnd === null || end > maxEnd) maxEnd = end;
   });
   if (minStart === null) minStart = today;
@@ -556,20 +561,24 @@ function renderGantt() {
     const offsetPct = daysBetween(range.start, start) / totalDays * 100;
     const widthPct = daysBetween(start, end) / totalDays * 100;
     const colorBg = t.type === 'window' ? 'var(--warning-bg)' : t.type === 'quota' ? 'var(--info-bg)' : 'var(--danger-bg)';
-    const dateLabel = t.type === 'once' ? fmtDate(t.date) : (fmtDate(start) + ' – ' + fmtDate(end));
     const showDate = !(t.type === 'once' && t.date === today);
 
     html += '<div style="margin-bottom:' + (showDate ? 26 : 14) + 'px;">';
-    html += '<div style="font-size:12px;color:' + (t.done ? 'var(--text-tertiary)' : 'var(--text-secondary)') + ';margin-bottom:3px;display:flex;justify-content:space-between;gap:8px;">' +
+    html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:3px;display:flex;justify-content:space-between;gap:8px;">' +
       '<span style="min-width:0;word-break:break-word;">' + escapeHtml(t.name) + (t.type==='quota' ? ' · ' + t.progress + '/' + t.target : '') + '</span>' +
       '<span style="flex-shrink:0;">' + typeLabel(t.type, t.recurring) + '</span></div>';
     html += '<div style="position:relative;height:' + BAR_H + 'px;">';
     if (t.type === 'once') {
-      html += '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + BAR_H + 'px;height:' + BAR_H + 'px;background:' + colorBg + ';border-radius:50%;opacity:' + (t.done ? 0.4 : 1) + ';"></div>';
+      html += '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + BAR_H + 'px;height:' + BAR_H + 'px;background:' + colorBg + ';border-radius:50%;"></div>';
+      if (showDate) html += dateLabelHtml(offsetPct, fmtDate(t.date), BAR_H/2);
     } else {
-      html += '<div class="gantt-bar" style="left:' + offsetPct + '%;width:max(' + widthPct + '%, ' + BAR_H + 'px);height:' + BAR_H + 'px;background:' + colorBg + ';border-radius:' + (BAR_H/2) + 'px;opacity:' + (t.done ? 0.4 : 1) + ';"></div>';
+      const barWidthExpr = 'max(' + widthPct + '%, ' + BAR_H + 'px)';
+      html += '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + barWidthExpr + ';height:' + BAR_H + 'px;background:' + colorBg + ';border-radius:' + (BAR_H/2) + 'px;"></div>';
+      // start date label: left-aligned to the bar's left edge
+      html += '<div style="position:absolute;left:' + offsetPct + '%;top:' + (BAR_H+4) + 'px;font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + fmtDate(start) + '</div>';
+      // end date label: right-aligned to the bar's right edge
+      html += '<div style="position:absolute;left:calc(' + offsetPct + '% + ' + barWidthExpr + ');top:' + (BAR_H+4) + 'px;transform:translateX(-100%);font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + fmtDate(end) + '</div>';
     }
-    if (showDate) html += dateLabelHtml(offsetPct, dateLabel, t.type === 'once' ? BAR_H/2 : 0);
     html += '</div></div>';
   });
 
@@ -686,6 +695,7 @@ function submitForm() {
   }
   nameEl.value = '';
   nameEl.blur();
+  selectType('habit');
 }
 
 function renderForm() {
