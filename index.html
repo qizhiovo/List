@@ -20,6 +20,9 @@
     --info-bg: #e6f1fb;
     --info-text: #0c447c;
     --info-border: #378add;
+    --purple-bg: #f0e9fb;
+    --purple-text: #5b2d99;
+    --purple-border: #9b6fd6;
     --warning-bg: #faeeda;
     --warning-text: #854f0b;
     --danger-bg: #fcebeb;
@@ -39,6 +42,9 @@
       --border-strong: rgba(255,255,255,0.2);
       --info-bg: #0c447c;
       --info-text: #b5d4f4;
+      --purple-bg: #432a73;
+      --purple-text: #d9c5f7;
+      --purple-border: #9b6fd6;
       --warning-bg: #633806;
       --warning-text: #fac775;
       --danger-bg: #791f1f;
@@ -93,7 +99,7 @@
   .top-tabs button.active { color: var(--text); }
 
   .swipe-row { position: relative; overflow: hidden; margin-bottom: 6px; border-radius: var(--radius-md); }
-  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; transition: transform 0.15s ease-out, opacity 0.15s; touch-action: pan-y; }
+  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; width: 100%; box-sizing: border-box; background-color: var(--bg); transition: transform 0.15s ease-out, opacity 0.15s; touch-action: pan-y; }
   .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--danger-text); color: white; border: none; font-size: 14px; cursor: pointer; }
   .check-btn { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
   .check-btn.done { background: var(--bg-secondary); border-color: var(--border); color: var(--text-tertiary); }
@@ -110,10 +116,10 @@
   .type-btn[data-type="window"].active { border-color: var(--warning-text); background: var(--warning-bg); color: var(--warning-text); }
   .type-btn[data-type="quota"].active { border-color: var(--info-border); background: var(--info-bg); color: var(--info-text); }
   .type-btn[data-type="once"].active { border-color: var(--danger-text); background: var(--danger-bg); color: var(--danger-text); }
-  .type-btn[data-type="anniversary"].active { border-color: var(--info-border); background: var(--info-bg); color: var(--info-text); }
+  .type-btn[data-type="anniversary"].active { border-color: var(--purple-border); background: var(--purple-bg); color: var(--purple-text); }
 
   .gantt-bar { position: absolute; cursor: default; }
-  .anniv-icon { color: var(--info-text); }
+  .anniv-icon { color: var(--purple-text); }
 
   .empty-state { padding: 32px 0; text-align: center; color: var(--text-tertiary); font-size: 14px; }
 
@@ -460,11 +466,11 @@ function renderAnniversaryRow(t) {
   const label = days === 0 ? '今天' : '还有 ' + days + ' 天';
   return '<div class="swipe-row" data-id="' + t.id + '">' +
     '<button class="swipe-delete-bg" onclick="deleteTask(\'' + t.id + '\')">删除</button>' +
-    '<div class="swipe-content" style="background:var(--info-bg);border-radius:var(--radius-md);padding-left:10px;padding-right:10px;">' +
+    '<div class="swipe-content" style="background:var(--purple-bg);border-radius:var(--radius-md);padding-left:10px;padding-right:10px;">' +
       '<div class="anniv-icon" style="width:24px;text-align:center;">🤍</div>' +
       '<div style="flex:1;min-width:0;">' +
         '<div class="row-title">' + escapeHtml(t.name) + '</div>' +
-        '<div class="row-sub" style="color:var(--info-text);">' + label + ' · ' + fmtDate(t.nextDate) + '</div>' +
+        '<div class="row-sub" style="color:var(--purple-text);">' + label + ' · ' + fmtDate(t.nextDate) + '</div>' +
       '</div>' +
     '</div>' +
   '</div>';
@@ -508,11 +514,12 @@ function getGanttRange() {
 }
 
 const BAR_H = 18;
-function dateLabelHtml(offsetPct, text) {
+function dateLabelHtml(offsetPct, text, centerOffsetPx) {
   let transform = 'translateX(-50%)';
-  if (offsetPct < 8) transform = 'translateX(0%)';
-  else if (offsetPct > 92) transform = 'translateX(-100%)';
-  return '<div style="position:absolute;left:' + offsetPct + '%;top:' + (BAR_H+4) + 'px;transform:' + transform + ';font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
+  let leftExpr = 'calc(' + offsetPct + '%' + (centerOffsetPx ? ' + ' + centerOffsetPx + 'px' : '') + ')';
+  if (offsetPct < 8) { transform = 'translateX(0%)'; leftExpr = offsetPct + '%'; }
+  else if (offsetPct > 92) { transform = 'translateX(-100%)'; leftExpr = 'calc(' + offsetPct + '%' + (centerOffsetPx ? ' + ' + (centerOffsetPx*2) + 'px' : '') + ')'; }
+  return '<div style="position:absolute;left:' + leftExpr + ';top:' + (BAR_H+4) + 'px;transform:' + transform + ';font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
 }
 
 function renderGantt() {
@@ -530,10 +537,10 @@ function renderGantt() {
     const offsetPct = Math.max(0, Math.min(daysBetween(range.start, a.nextDate) / totalDays * 100, 100));
     const showDate = a.nextDate !== today;
     html += '<div style="margin-bottom:' + (showDate ? 26 : 14) + 'px;">';
-    html += '<div style="font-size:12px;color:var(--info-text);margin-bottom:3px;">🤍 ' + escapeHtml(a.name) + '</div>';
+    html += '<div style="font-size:12px;color:var(--purple-text);margin-bottom:3px;">🤍 ' + escapeHtml(a.name) + '</div>';
     html += '<div style="position:relative;height:' + BAR_H + 'px;">' +
-      '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + BAR_H + 'px;height:' + BAR_H + 'px;background:var(--info-bg);border-radius:50%;"></div>' +
-      (showDate ? dateLabelHtml(offsetPct, fmtDate(a.nextDate)) : '') +
+      '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + BAR_H + 'px;height:' + BAR_H + 'px;background:var(--purple-bg);border-radius:50%;"></div>' +
+      (showDate ? dateLabelHtml(offsetPct, fmtDate(a.nextDate), BAR_H/2) : '') +
     '</div></div>';
   });
 
@@ -554,7 +561,7 @@ function renderGantt() {
 
     html += '<div style="margin-bottom:' + (showDate ? 26 : 14) + 'px;">';
     html += '<div style="font-size:12px;color:' + (t.done ? 'var(--text-tertiary)' : 'var(--text-secondary)') + ';margin-bottom:3px;display:flex;justify-content:space-between;gap:8px;">' +
-      '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(t.name) + (t.type==='quota' ? ' · ' + t.progress + '/' + t.target : '') + '</span>' +
+      '<span style="min-width:0;word-break:break-word;">' + escapeHtml(t.name) + (t.type==='quota' ? ' · ' + t.progress + '/' + t.target : '') + '</span>' +
       '<span style="flex-shrink:0;">' + typeLabel(t.type, t.recurring) + '</span></div>';
     html += '<div style="position:relative;height:' + BAR_H + 'px;">';
     if (t.type === 'once') {
@@ -562,7 +569,7 @@ function renderGantt() {
     } else {
       html += '<div class="gantt-bar" style="left:' + offsetPct + '%;width:max(' + widthPct + '%, ' + BAR_H + 'px);height:' + BAR_H + 'px;background:' + colorBg + ';border-radius:' + (BAR_H/2) + 'px;opacity:' + (t.done ? 0.4 : 1) + ';"></div>';
     }
-    if (showDate) html += dateLabelHtml(offsetPct, dateLabel);
+    if (showDate) html += dateLabelHtml(offsetPct, dateLabel, t.type === 'once' ? BAR_H/2 : 0);
     html += '</div></div>';
   });
 
@@ -608,26 +615,35 @@ function renderExtraFields(type) {
   if (type === 'anniversary') {
     return '<input type="date" id="f-anniv-date" value="' + today + '" style="width:100%;margin-bottom:8px;" />' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">' +
-      '<button type="button" class="type-btn' + (selectedAnnivUnit==='year'?' active':'') + '" id="f-anniv-year-btn" onclick="selectAnnivUnit(\'year\')">每年提醒</button>' +
-      '<button type="button" class="type-btn' + (selectedAnnivUnit==='month'?' active':'') + '" id="f-anniv-month-btn" onclick="selectAnnivUnit(\'month\')">每月提醒</button>' +
+      '<button type="button" class="type-btn' + (selectedAnnivUnit==='year'?' active':'') + '" data-type="anniversary" id="f-anniv-year-btn" onclick="selectAnnivUnit(\'year\')">每年提醒</button>' +
+      '<button type="button" class="type-btn' + (selectedAnnivUnit==='month'?' active':'') + '" data-type="anniversary" id="f-anniv-month-btn" onclick="selectAnnivUnit(\'month\')">每月提醒</button>' +
     '</div>';
   }
   return '';
 }
 
+let selectedWindowCycleUnit = 'month';
 function renderRecurExtra() {
   const checked = document.getElementById('f-recurring') && document.getElementById('f-recurring').checked;
   if (!checked) return '';
-  return '<select id="f-cycle-unit" style="width:100%;height:40px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);margin-bottom:8px;">' +
-    '<option value="month">每月循环</option><option value="week">每周循环</option></select>';
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">' +
+    '<button type="button" class="type-btn' + (selectedWindowCycleUnit==='month'?' active':'') + '" data-type="window" id="f-window-month-btn" onclick="selectWindowCycleUnit(\'month\')">每月循环</button>' +
+    '<button type="button" class="type-btn' + (selectedWindowCycleUnit==='week'?' active':'') + '" data-type="window" id="f-window-week-btn" onclick="selectWindowCycleUnit(\'week\')">每周循环</button>' +
+  '</div>';
+}
+function selectWindowCycleUnit(u) {
+  selectedWindowCycleUnit = u;
+  const mb = document.getElementById('f-window-month-btn'), wb = document.getElementById('f-window-week-btn');
+  if (mb) mb.classList.toggle('active', u === 'month');
+  if (wb) wb.classList.toggle('active', u === 'week');
 }
 function onRecurringChange() { document.getElementById('f-recur-extra').innerHTML = renderRecurExtra(); }
 
 function selectAnnivUnit(u) {
   selectedAnnivUnit = u;
   const yb = document.getElementById('f-anniv-year-btn'), mb = document.getElementById('f-anniv-month-btn');
-  if (yb) yb.className = 'type-btn' + (u==='year' ? ' active' : '');
-  if (mb) mb.className = 'type-btn' + (u==='month' ? ' active' : '');
+  if (yb) yb.classList.toggle('active', u === 'year');
+  if (mb) mb.classList.toggle('active', u === 'month');
 }
 function selectType(type) {
   selectedType = type;
@@ -650,7 +666,7 @@ function submitForm() {
     const end = document.getElementById('f-end').value;
     if (!start || !end || end < start) return;
     const recurring = document.getElementById('f-recurring').checked;
-    const cycleUnit = recurring ? document.getElementById('f-cycle-unit').value : null;
+    const cycleUnit = recurring ? selectedWindowCycleUnit : null;
     addTask({ type, name, start, end, recurring, cycleUnit });
   } else if (type === 'quota') {
     const target = parseInt(document.getElementById('f-target').value) || 1;
@@ -669,7 +685,7 @@ function submitForm() {
     addTask({ type, name, nextDate: date, anniversaryUnit: selectedAnnivUnit });
   }
   nameEl.value = '';
-  nameEl.focus();
+  nameEl.blur();
 }
 
 function renderForm() {
@@ -723,6 +739,7 @@ window.toggleDone = toggleDone;
 window.deleteTask = deleteTask;
 window.switchView = switchView;
 window.onRecurringChange = onRecurringChange;
+window.selectWindowCycleUnit = selectWindowCycleUnit;
 window.submitForm = submitForm;
 window.selectType = selectType;
 window.selectAnnivUnit = selectAnnivUnit;
