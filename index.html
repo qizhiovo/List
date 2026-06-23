@@ -27,28 +27,33 @@
     --warning-text: #854f0b;
     --danger-bg: #fcebeb;
     --danger-text: #a32d2d;
+    --habit-bg: #fbe6ec;
+    --habit-text: #b13e63;
     --radius-md: 8px;
     --radius-lg: 12px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #1c1c1a;
-      --bg-secondary: #2a2a27;
-      --bg-card: #232320;
-      --text: #ececea;
-      --text-secondary: #b4b2a9;
-      --text-tertiary: #888780;
-      --border: rgba(255,255,255,0.12);
-      --border-strong: rgba(255,255,255,0.2);
-      --info-bg: #0c447c;
-      --info-text: #b5d4f4;
-      --purple-bg: #432a73;
-      --purple-text: #d9c5f7;
-      --purple-border: #9b6fd6;
-      --warning-bg: #633806;
-      --warning-text: #fac775;
-      --danger-bg: #791f1f;
-      --danger-text: #f7c1c1;
+      --bg: #19181a;
+      --bg-secondary: #252327;
+      --bg-card: #211f22;
+      --text: #e6e3e0;
+      --text-secondary: #a7a2a0;
+      --text-tertiary: #76716f;
+      --border: rgba(255,255,255,0.10);
+      --border-strong: rgba(255,255,255,0.18);
+      --info-bg: #1d3447;
+      --info-text: #8fc4e8;
+      --info-border: #4a90c2;
+      --purple-bg: #2e2440;
+      --purple-text: #c9aef0;
+      --purple-border: #8868b8;
+      --warning-bg: #3a2c1a;
+      --warning-text: #e0b074;
+      --danger-bg: #3a1f1f;
+      --danger-text: #e3958f;
+      --habit-bg: #3a2230;
+      --habit-text: #e497b3;
     }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -485,12 +490,11 @@ function typeBg(type) {
 function renderRow(t, label, isHabit, urgency) {
   const done = t.done;
   const color = isHabit ? 'var(--text-secondary)' : urgencyColor(urgency, done);
-  const typedBg = isHabit ? 'var(--bg)' : (done ? 'var(--bg-secondary)' : typeBg(t.type));
-  const hasColor = typedBg !== 'var(--bg)';
-  return '<div class="swipe-row" data-id="' + t.id + '"' + (isHabit ? ' style="margin-bottom:0;border-radius:0;"' : '') + '>' +
+  const typedBg = isHabit ? (done ? 'var(--bg-secondary)' : 'var(--habit-bg)') : (done ? 'var(--bg-secondary)' : typeBg(t.type));
+  return '<div class="swipe-row" data-id="' + t.id + '">' +
     '<button class="swipe-edit-bg" onclick="startEdit(\'' + t.id + '\')">编辑</button>' +
     '<button class="swipe-delete-bg" onclick="deleteTask(\'' + t.id + '\')">删除</button>' +
-    '<div class="swipe-content" style="background:' + typedBg + ';border-radius:' + (hasColor ? 'var(--radius-md)' : '0') + ';padding-left:' + (hasColor ? '10px' : '0') + ';padding-right:' + (hasColor ? '10px' : '0') + ';">' +
+    '<div class="swipe-content" style="background:' + typedBg + ';border-radius:var(--radius-md);padding-left:10px;padding-right:10px;">' +
       '<button class="check-btn' + (done ? ' done' : '') + '" onclick="toggleDone(\'' + t.id + '\')">' + (done ? '✓' : '') + '</button>' +
       '<div style="flex:1;min-width:0;">' +
         '<div class="row-title" style="' + (done ? 'color:var(--text-tertiary);text-decoration:line-through;' : '') + '">' + escapeHtml(t.name) +
@@ -1002,6 +1006,33 @@ document.addEventListener('touchend', function(e) {
   }
   lastTouchEnd = now;
 }, { passive: false });
+
+// Some iOS Safari versions fail to reset the page scroll position after the
+// on-screen keyboard is dismissed (the visual viewport resizes but the
+// layout viewport's scroll offset is left stale). As a safety net, when the
+// keyboard closes (visualViewport height returns to roughly the full window
+// height) and no input is focused anymore, nudge the scroll position back
+// into a valid range.
+if (window.visualViewport) {
+  let lastVVHeight = window.visualViewport.height;
+  window.visualViewport.addEventListener('resize', () => {
+    const vv = window.visualViewport;
+    const keyboardClosed = vv.height > lastVVHeight && vv.height >= window.innerHeight - 60;
+    lastVVHeight = vv.height;
+    if (keyboardClosed) {
+      const active = document.activeElement;
+      const stillEditing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+      if (!stillEditing) {
+        setTimeout(() => {
+          const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+          if (window.scrollY > Math.max(0, maxScroll)) {
+            window.scrollTo({ top: Math.max(0, maxScroll), behavior: 'auto' });
+          }
+        }, 50);
+      }
+    }
+  });
+}
 
 // ====== SWIPE TO DELETE ======
 function attachSwipeHandlers(root) {
