@@ -99,7 +99,7 @@
   .top-tabs button.active { color: var(--text); }
 
   .swipe-row { position: relative; margin-bottom: 6px; border-radius: var(--radius-md); clip-path: inset(0); }
-  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; width: 100%; box-sizing: border-box; background-color: var(--bg); transition: padding 0.15s ease-out, min-height 0.15s ease-out; touch-action: pan-y; z-index: 2; min-height: 38px; }
+  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; left: 0; width: 100%; box-sizing: border-box; background-color: var(--bg); transition: left 0.15s ease-out, width 0.15s ease-out, min-height 0.15s ease-out; touch-action: pan-y; z-index: 2; min-height: 38px; }
   .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: #ef6f48; color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
   .swipe-edit-bg { position: absolute; left: 0; top: 0; bottom: 0; width: 72px; background: #66c18c; color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
   .check-btn { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
@@ -1011,23 +1011,24 @@ function attachSwipeHandlers(root) {
     row.dataset.swipeBound = '1';
     const content = row.querySelector('.swipe-content');
     const hasEdit = !!row.querySelector('.swipe-edit-bg');
-    const basePL = parseFloat(getComputedStyle(content).paddingLeft) || 0;
-    const basePR = parseFloat(getComputedStyle(content).paddingRight) || 0;
     let startX = 0, startY = 0, currentX = 0, dragging = false, decided = false, isHorizontal = false;
     const ACTION_WIDTH = 72;
 
     function applyOffset(x) {
-      // Instead of translating the whole content (which pushes text off-screen),
-      // squeeze it via padding so child elements (checkbox, text) reflow and stay visible.
-      if (x < 0) {
-        content.style.paddingRight = (basePR - x) + 'px';
-        content.style.paddingLeft = basePL + 'px';
-      } else if (x > 0) {
-        content.style.paddingLeft = (basePL + x) + 'px';
-        content.style.paddingRight = basePR + 'px';
+      // Shrink content's width (instead of translating it) so the revealed
+      // edit/delete button becomes visible, but nothing is ever pushed past
+      // the row's clip boundary.
+      // Swiping left (x<0): keep left edge fixed, shrink from the right
+      //   to reveal the delete button on the right.
+      // Swiping right (x>0): move the left edge right and shrink width
+      //   by the same amount, keeping the right edge fixed, to reveal
+      //   the edit button on the left.
+      if (x <= 0) {
+        content.style.left = '0px';
+        content.style.width = 'calc(100% - ' + (-x) + 'px)';
       } else {
-        content.style.paddingLeft = basePL + 'px';
-        content.style.paddingRight = basePR + 'px';
+        content.style.left = x + 'px';
+        content.style.width = 'calc(100% - ' + x + 'px)';
       }
     }
 
@@ -1061,7 +1062,7 @@ function attachSwipeHandlers(root) {
 
     content.addEventListener('touchend', () => {
       dragging = false;
-      content.style.transition = 'padding 0.15s ease-out';
+      content.style.transition = 'left 0.15s ease-out, width 0.15s ease-out';
       if (isHorizontal && currentX < -ACTION_WIDTH / 2) {
         closeAllSwipes(row);
         applyOffset(-ACTION_WIDTH);
@@ -1074,7 +1075,7 @@ function attachSwipeHandlers(root) {
     });
 
     row._resetSwipe = () => {
-      content.style.transition = 'padding 0.15s ease-out';
+      content.style.transition = 'left 0.15s ease-out, width 0.15s ease-out';
       applyOffset(0);
     };
   });
