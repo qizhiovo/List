@@ -146,10 +146,11 @@
   #all-tasks-drawer.open { transform: translateX(0); }
   .drawer-header { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
   .at-section-label { font-size: 12px; color: var(--text-secondary); margin: 16px 0 8px; }
-  .at-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+  .at-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; width: 100%; box-sizing: border-box; background-color: var(--bg); }
   .at-row .at-name { flex: 1; min-width: 0; font-size: 14px; word-break: break-word; }
   .at-row .at-name.done { color: var(--text-tertiary); text-decoration: line-through; }
   .at-row .at-meta { font-size: 11px; color: var(--text-tertiary); flex-shrink: 0; text-align: right; }
+  .at-swipe-row { border-bottom: 0.5px solid var(--border); margin-bottom: 0 !important; border-radius: 0 !important; }
   .at-empty { color: var(--text-tertiary); font-size: 13px; padding: 12px 0; }
   .signout-link { font-size: 12px; color: var(--text-tertiary); background: none; border: none; padding: 0; text-decoration: underline; }
 </style>
@@ -760,6 +761,8 @@ function submitForm() {
   const data = buildTaskDataFromForm(type, name);
   if (!data) return;
 
+  const wasEditing = !!editingTaskId;
+
   if (editingTaskId) {
     updateTask(editingTaskId, data);
   } else {
@@ -771,6 +774,10 @@ function submitForm() {
   editingTaskId = null;
   selectType('habit');
   refreshFormHeader();
+
+  if (wasEditing) {
+    window.scrollTo({ top: editScrollY, behavior: 'smooth' });
+  }
 }
 
 function refreshFormHeader() {
@@ -929,17 +936,23 @@ function renderAllTasksContent() {
   const pending = sorted.filter(t => !t.done);
   const done = sorted.filter(t => t.done);
 
+  function renderAtRow(t) {
+    return '<div class="swipe-row at-swipe-row" data-id="' + t.id + '">' +
+      '<button class="swipe-edit-bg" onclick="startEditFromDrawer(\'' + t.id + '\')">编辑</button>' +
+      '<button class="swipe-delete-bg" onclick="deleteTask(\'' + t.id + '\')">删除</button>' +
+      '<div class="swipe-content at-row">' +
+        '<span class="at-name' + (t.done ? ' done' : '') + '">' + escapeHtml(t.name) + '</span>' +
+        '<span class="at-meta">' + taskMetaText(t) + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
   function renderGroup(label, list) {
     let html = '<div class="at-section-label">' + label + ' (' + list.length + ')</div>';
     if (list.length === 0) {
       html += '<div class="at-empty">暂无</div>';
     } else {
-      list.forEach(t => {
-        html += '<div class="at-row">' +
-          '<span class="at-name' + (t.done ? ' done' : '') + '">' + escapeHtml(t.name) + '</span>' +
-          '<span class="at-meta">' + taskMetaText(t) + '</span>' +
-        '</div>';
-      });
+      list.forEach(t => { html += renderAtRow(t); });
     }
     return html;
   }
@@ -947,8 +960,14 @@ function renderAllTasksContent() {
   return renderGroup('进行中 / 未完成', pending) + renderGroup('已完成', done);
 }
 
+function startEditFromDrawer(id) {
+  closeAllTasks();
+  setTimeout(() => startEdit(id), 260);
+}
+
 function openAllTasks() {
   document.getElementById('all-tasks-content').innerHTML = renderAllTasksContent();
+  attachSwipeHandlers();
   document.getElementById('all-tasks-drawer').classList.add('open');
   document.getElementById('drawer-overlay').classList.add('open');
 }
@@ -961,6 +980,7 @@ function closeAllTasks() {
 window.openAllTasks = openAllTasks;
 window.closeAllTasks = closeAllTasks;
 window.startEdit = startEdit;
+window.startEditFromDrawer = startEditFromDrawer;
 window.cancelEdit = cancelEdit;
 
 // Extra safety net against double-tap-to-zoom on browsers that ignore touch-action in edge cases
@@ -974,8 +994,11 @@ document.addEventListener('touchend', function(e) {
 }, { passive: false });
 
 // ====== SWIPE TO DELETE ======
-function attachSwipeHandlers() {
-  document.querySelectorAll('.swipe-row').forEach(row => {
+function attachSwipeHandlers(root) {
+  const scope = root || document;
+  scope.querySelectorAll('.swipe-row').forEach(row => {
+    if (row.dataset.swipeBound) return;
+    row.dataset.swipeBound = '1';
     const content = row.querySelector('.swipe-content');
     const hasEdit = !!row.querySelector('.swipe-edit-bg');
     let startX = 0, startY = 0, currentX = 0, dragging = false, decided = false, isHorizontal = false;
@@ -1032,6 +1055,16 @@ function closeAllSwipes(exceptRow) {
     if (c) { c.style.transition = 'transform 0.15s ease-out'; c.style.transform = 'translateX(0)'; }
   });
 }
+
+// Close any open swipe row when the user taps/clicks anywhere outside of it.
+document.addEventListener('touchstart', (e) => {
+  const insideRow = e.target.closest && e.target.closest('.swipe-row');
+  closeAllSwipes(insideRow || null);
+}, { passive: true, capture: true });
+document.addEventListener('mousedown', (e) => {
+  const insideRow = e.target.closest && e.target.closest('.swipe-row');
+  closeAllSwipes(insideRow || null);
+}, { capture: true });
 </script>
 
 <script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
