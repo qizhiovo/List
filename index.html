@@ -423,7 +423,16 @@ function addTask(t) {
   tasks.push(Object.assign({ id: uid(), done: false, doneAt: null, progress: 0 }, t));
   scheduleSave();
   renderMain();
+  refreshAllTasksIfOpen();
 }
+function refreshAllTasksIfOpen() {
+  const drawer = document.getElementById('all-tasks-drawer');
+  if (drawer && drawer.classList.contains('open')) {
+    document.getElementById('all-tasks-content').innerHTML = renderAllTasksContent();
+    attachSwipeHandlers();
+  }
+}
+
 function toggleDone(id) {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
@@ -441,11 +450,13 @@ function toggleDone(id) {
   }
   scheduleSave();
   renderMain();
+  refreshAllTasksIfOpen();
 }
 function deleteTask(id) {
   tasks = tasks.filter(x => x.id !== id);
   scheduleSave();
   renderMain();
+  refreshAllTasksIfOpen();
 }
 
 function getTodayItems() {
@@ -763,6 +774,7 @@ function updateTask(id, data) {
   }
   scheduleSave();
   renderMain();
+  refreshAllTasksIfOpen();
 }
 
 function submitForm() {
