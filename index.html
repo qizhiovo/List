@@ -101,6 +101,7 @@
   .swipe-row { position: relative; margin-bottom: 6px; border-radius: var(--radius-md); clip-path: inset(0); }
   .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; width: 100%; box-sizing: border-box; background-color: var(--bg); transition: transform 0.15s ease-out; touch-action: pan-y; z-index: 2; }
   .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--danger-text); color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
+  .swipe-edit-bg { position: absolute; left: 0; top: 0; bottom: 0; width: 72px; background: var(--info-text); color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
   .check-btn { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
   .check-btn.done { background: var(--bg-secondary); border-color: var(--border); color: var(--text-tertiary); }
   .row-title { font-size: 15px; flex: 1; min-width: 0; }
@@ -110,6 +111,11 @@
   .section-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; margin-top: 4px; }
 
   .form-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-top: 16px; background: var(--bg-card); }
+  .form-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
+  .form-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .form-title-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .confirm-btn { background: var(--info-text); color: white; border: none; padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
+  .cancel-edit-btn { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
   .type-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
   .type-btn { padding: 10px 12px; border-radius: var(--radius-md); font-size: 14px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); text-align: left; }
   .type-btn[data-type="habit"].active { border-color: var(--border-strong); background: var(--bg-secondary); color: var(--text); }
@@ -480,6 +486,7 @@ function renderRow(t, label, isHabit, urgency) {
   const typedBg = isHabit ? 'var(--bg)' : (done ? 'var(--bg-secondary)' : typeBg(t.type));
   const hasColor = typedBg !== 'var(--bg)';
   return '<div class="swipe-row" data-id="' + t.id + '"' + (isHabit ? ' style="margin-bottom:0;border-radius:0;"' : '') + '>' +
+    '<button class="swipe-edit-bg" onclick="startEdit(\'' + t.id + '\')">编辑</button>' +
     '<button class="swipe-delete-bg" onclick="deleteTask(\'' + t.id + '\')">删除</button>' +
     '<div class="swipe-content" style="background:' + typedBg + ';border-radius:' + (hasColor ? 'var(--radius-md)' : '0') + ';padding-left:' + (hasColor ? '10px' : '0') + ';padding-right:' + (hasColor ? '10px' : '0') + ';">' +
       '<button class="check-btn' + (done ? ' done' : '') + '" onclick="toggleDone(\'' + t.id + '\')">' + (done ? '✓' : '') + '</button>' +
@@ -498,6 +505,7 @@ function renderAnniversaryRow(t) {
   const days = daysBetween(today, t.nextDate);
   const label = days === 0 ? '今天' : '还有 ' + days + ' 天';
   return '<div class="swipe-row" data-id="' + t.id + '">' +
+    '<button class="swipe-edit-bg" onclick="startEdit(\'' + t.id + '\')">编辑</button>' +
     '<button class="swipe-delete-bg" onclick="deleteTask(\'' + t.id + '\')">删除</button>' +
     '<div class="swipe-content" style="background:var(--purple-bg);border-radius:var(--radius-md);padding-left:10px;padding-right:10px;">' +
       '<div class="anniv-icon" style="width:24px;text-align:center;">🤍</div>' +
@@ -700,49 +708,141 @@ function selectType(type) {
   refreshExtraFields();
 }
 
-function submitForm() {
-  const nameEl = document.getElementById('f-name');
-  const name = nameEl.value.trim();
-  const type = selectedType;
-  if (!name) { nameEl.focus(); return; }
-
+function buildTaskDataFromForm(type, name) {
   if (type === 'habit') {
-    addTask({ type, name });
+    return { type, name };
   } else if (type === 'window') {
     const start = document.getElementById('f-start').value;
     const end = document.getElementById('f-end').value;
-    if (!start || !end || end < start) return;
+    if (!start || !end || end < start) return null;
     const recurring = document.getElementById('f-recurring').checked;
     const cycleUnit = recurring ? selectedWindowCycleUnit : null;
-    addTask({ type, name, start, end, recurring, cycleUnit });
+    return { type, name, start, end, recurring, cycleUnit };
   } else if (type === 'quota') {
     const target = parseInt(document.getElementById('f-target').value) || 1;
     const cycleDays = parseInt(document.getElementById('f-cycledays').value) || 7;
     const recurring = document.getElementById('f-quota-recurring').checked;
     const start = todayStr();
     const end = addDays(start, cycleDays);
-    addTask({ type, name, start, end, target, cycleDays, recurring });
+    return { type, name, start, end, target, cycleDays, recurring };
   } else if (type === 'once') {
     const date = document.getElementById('f-date').value;
-    if (!date) return;
-    addTask({ type, name, date });
+    if (!date) return null;
+    return { type, name, date };
   } else if (type === 'anniversary') {
     const date = document.getElementById('f-anniv-date').value;
-    if (!date) return;
-    addTask({ type, name, nextDate: date, anniversaryUnit: selectedAnnivUnit });
+    if (!date) return null;
+    return { type, name, nextDate: date, anniversaryUnit: selectedAnnivUnit };
   }
-  nameEl.value = '';
-  nameEl.blur();
-  selectType('habit');
+  return null;
 }
 
+function updateTask(id, data) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  Object.keys(data).forEach(k => { t[k] = data[k]; });
+  // when editing a quota task's cycle settings, keep progress sane relative to the new target
+  if (t.type === 'quota') {
+    t.progress = Math.min(t.progress, t.target);
+    t.done = t.progress >= t.target;
+  }
+  scheduleSave();
+  renderMain();
+}
+
+function submitForm() {
+  const nameEl = document.getElementById('f-name');
+  const name = nameEl.value.trim();
+  const type = selectedType;
+  if (!name) { nameEl.focus(); return; }
+
+  const data = buildTaskDataFromForm(type, name);
+  if (!data) return;
+
+  if (editingTaskId) {
+    updateTask(editingTaskId, data);
+  } else {
+    addTask(data);
+  }
+
+  nameEl.value = '';
+  nameEl.blur();
+  editingTaskId = null;
+  selectType('habit');
+  refreshFormHeader();
+}
+
+function refreshFormHeader() {
+  const card = document.getElementById('task-form-card');
+  if (!card) return;
+  const titleRow = card.querySelector('.form-title-row');
+  if (!titleRow) return;
+  titleRow.innerHTML =
+    '<span class="form-title">' + (editingTaskId ? '修改行动计划中...' : '新的任务咪') + '</span>' +
+    '<div class="form-title-actions">' +
+      (editingTaskId ? '<button class="cancel-edit-btn" onclick="cancelEdit()">不要了</button>' : '') +
+      '<button class="confirm-btn" onclick="submitForm()">确认喵</button>' +
+    '</div>';
+}
+
+function fillFormForEdit(t) {
+  document.getElementById('f-name').value = t.name;
+  selectType(t.type);
+  // selectType triggers refreshExtraFields synchronously via render path below,
+  // but we call it directly here to guarantee the right fields exist before filling them.
+  refreshExtraFields();
+
+  if (t.type === 'window') {
+    document.getElementById('f-start').value = t.start;
+    document.getElementById('f-end').value = t.end;
+    const recurringBox = document.getElementById('f-recurring');
+    recurringBox.checked = !!t.recurring;
+    onRecurringChange();
+    if (t.recurring) selectWindowCycleUnit(t.cycleUnit || 'month');
+  } else if (t.type === 'quota') {
+    document.getElementById('f-target').value = t.target;
+    document.getElementById('f-cycledays').value = t.cycleDays;
+    document.getElementById('f-quota-recurring').checked = t.recurring !== false;
+  } else if (t.type === 'once') {
+    document.getElementById('f-date').value = t.date;
+  } else if (t.type === 'anniversary') {
+    document.getElementById('f-anniv-date').value = t.nextDate;
+    selectAnnivUnit(t.anniversaryUnit || 'year');
+  }
+}
+
+function startEdit(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  editingTaskId = id;
+  fillFormForEdit(t);
+  refreshFormHeader();
+  const card = document.getElementById('task-form-card');
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelEdit() {
+  editingTaskId = null;
+  document.getElementById('f-name').value = '';
+  selectType('habit');
+  refreshFormHeader();
+}
+
+let editingTaskId = null;
+
 function renderForm() {
-  return '<div class="form-card">' +
-    '<div class="section-label">新的任务咪</div>' +
+  const title = editingTaskId ? '修改行动计划中...' : '新的任务咪';
+  return '<div class="form-card" id="task-form-card">' +
+    '<div class="form-title-row">' +
+      '<span class="form-title">' + title + '</span>' +
+      '<div class="form-title-actions">' +
+        (editingTaskId ? '<button class="cancel-edit-btn" onclick="cancelEdit()">不要了</button>' : '') +
+        '<button class="confirm-btn" onclick="submitForm()">确认喵</button>' +
+      '</div>' +
+    '</div>' +
     '<input type="text" id="f-name" placeholder="任务名称" autocomplete="off" style="margin-bottom:10px;" />' +
     typeOptions() +
     '<div id="f-extra"></div>' +
-    '<button onclick="submitForm()" style="width:100%;margin-top:4px;">添加</button>' +
   '</div>';
 }
 
@@ -854,6 +954,8 @@ function closeAllTasks() {
 
 window.openAllTasks = openAllTasks;
 window.closeAllTasks = closeAllTasks;
+window.startEdit = startEdit;
+window.cancelEdit = cancelEdit;
 
 // Extra safety net against double-tap-to-zoom on browsers that ignore touch-action in edge cases
 let lastTouchEnd = 0;
@@ -869,9 +971,9 @@ document.addEventListener('touchend', function(e) {
 function attachSwipeHandlers() {
   document.querySelectorAll('.swipe-row').forEach(row => {
     const content = row.querySelector('.swipe-content');
-    const id = row.dataset.id;
+    const hasEdit = !!row.querySelector('.swipe-edit-bg');
     let startX = 0, startY = 0, currentX = 0, dragging = false, decided = false, isHorizontal = false;
-    const DELETE_WIDTH = 72;
+    const ACTION_WIDTH = 72;
 
     content.addEventListener('touchstart', (e) => {
       startX = e.touches[0].clientX;
@@ -895,16 +997,21 @@ function attachSwipeHandlers() {
         }
       }
       if (!isHorizontal) return;
-      currentX = Math.min(0, Math.max(dx, -DELETE_WIDTH - 20));
+      const minX = -ACTION_WIDTH - 20;
+      const maxX = hasEdit ? ACTION_WIDTH + 20 : 0;
+      currentX = Math.min(maxX, Math.max(dx, minX));
       content.style.transform = 'translateX(' + currentX + 'px)';
     }, { passive: true });
 
     content.addEventListener('touchend', () => {
       dragging = false;
       content.style.transition = 'transform 0.15s ease-out';
-      if (isHorizontal && currentX < -DELETE_WIDTH / 2) {
+      if (isHorizontal && currentX < -ACTION_WIDTH / 2) {
         closeAllSwipes(row);
-        content.style.transform = 'translateX(-' + DELETE_WIDTH + 'px)';
+        content.style.transform = 'translateX(-' + ACTION_WIDTH + 'px)';
+      } else if (isHorizontal && hasEdit && currentX > ACTION_WIDTH / 2) {
+        closeAllSwipes(row);
+        content.style.transform = 'translateX(' + ACTION_WIDTH + 'px)';
       } else {
         content.style.transform = 'translateX(0)';
       }
