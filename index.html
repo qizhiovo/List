@@ -99,7 +99,7 @@
   .top-tabs button.active { color: var(--text); }
 
   .swipe-row { position: relative; margin-bottom: 6px; border-radius: var(--radius-md); clip-path: inset(0); }
-  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; width: 100%; box-sizing: border-box; background-color: var(--bg); transition: transform 0.15s ease-out; touch-action: pan-y; z-index: 2; }
+  .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; width: 100%; box-sizing: border-box; background-color: var(--bg); transition: padding 0.15s ease-out, min-height 0.15s ease-out; touch-action: pan-y; z-index: 2; min-height: 38px; }
   .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: #ef6f48; color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
   .swipe-edit-bg { position: absolute; left: 0; top: 0; bottom: 0; width: 72px; background: #66c18c; color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
   .check-btn { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
@@ -110,7 +110,7 @@
 
   .section-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; margin-top: 4px; }
 
-  .form-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-top: 16px; background: var(--bg-card); }
+  .form-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-top: 32px; background: var(--bg-card); }
   .form-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
   .form-title { font-size: 15px; font-weight: 600; color: var(--text); }
   .form-title-actions { display: flex; gap: 6px; flex-shrink: 0; }
@@ -138,7 +138,7 @@
   .header-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 16px; min-height: 20px; font-size: 12px; color: var(--text-tertiary); }
   .header-bar #sync-indicator { text-align: center; }
   .header-bar .signout-link { justify-self: end; }
-  .header-bar .icon-btn { justify-self: start; border: none; background: none; padding: 0; font-size: 20px; line-height: 1; color: #f28e16; }
+  .header-bar .icon-btn { justify-self: start; border: none; background: none; padding: 0; font-size: 40px; line-height: 1; color: #f28e16; }
 
   #drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 90; }
   #drawer-overlay.open { opacity: 1; pointer-events: auto; }
@@ -584,7 +584,7 @@ function renderGantt() {
     const offsetPct = Math.max(0, Math.min(daysBetween(range.start, a.nextDate) / totalDays * 100, 100));
     const showDate = a.nextDate !== today;
     html += '<div style="margin-bottom:' + (showDate ? 26 : 14) + 'px;">';
-    html += '<div style="font-size:12px;color:var(--purple-text);margin-bottom:3px;">🤍 ' + escapeHtml(a.name) + '</div>';
+    html += '<div style="font-size:14px;color:var(--purple-text);margin-bottom:4px;">🤍 ' + escapeHtml(a.name) + '</div>';
     html += '<div style="position:relative;height:' + BAR_H + 'px;">' +
       '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + BAR_H + 'px;height:' + BAR_H + 'px;background:var(--purple-bg);border-radius:50%;"></div>' +
       (showDate ? dateLabelHtml(offsetPct, fmtDate(a.nextDate), BAR_H/2) : '') +
@@ -606,9 +606,9 @@ function renderGantt() {
     const showDate = !(t.type === 'once' && t.date === today);
 
     html += '<div style="margin-bottom:' + (showDate ? 26 : 14) + 'px;">';
-    html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:3px;display:flex;justify-content:space-between;gap:8px;">' +
-      '<span style="min-width:0;max-width:75%;word-break:break-word;">' + escapeHtml(t.name) + (t.type==='quota' ? ' · ' + t.progress + '/' + t.target : '') + '</span>' +
-      '<span style="flex-shrink:0;">' + typeLabel(t.type, t.recurring) + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">' +
+      '<span style="font-size:14px;color:var(--text);min-width:0;max-width:75%;word-break:break-word;">' + escapeHtml(t.name) + (t.type==='quota' ? ' · ' + t.progress + '/' + t.target : '') + '</span>' +
+      '<span style="font-size:11px;color:var(--text-tertiary);flex-shrink:0;">' + typeLabel(t.type, t.recurring) + '</span></div>';
     html += '<div style="position:relative;height:' + BAR_H + 'px;">';
     if (t.type === 'once') {
       html += '<div class="gantt-bar" style="left:' + offsetPct + '%;width:' + BAR_H + 'px;height:' + BAR_H + 'px;background:' + colorBg + ';border-radius:50%;"></div>';
@@ -776,7 +776,7 @@ function submitForm() {
   refreshFormHeader();
 
   if (wasEditing) {
-    window.scrollTo({ top: editScrollY, behavior: 'smooth' });
+    restoreAfterEdit();
   }
 }
 
@@ -820,11 +820,13 @@ function fillFormForEdit(t) {
 }
 
 let editScrollY = 0;
+let editFromDrawer = false;
 
-function startEdit(id) {
+function startEdit(id, fromDrawer) {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
   editScrollY = window.scrollY;
+  editFromDrawer = !!fromDrawer;
   closeAllSwipes(null);
   editingTaskId = id;
   fillFormForEdit(t);
@@ -833,12 +835,21 @@ function startEdit(id) {
   if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function restoreAfterEdit() {
+  if (editFromDrawer) {
+    openAllTasks();
+  } else {
+    window.scrollTo({ top: editScrollY, behavior: 'smooth' });
+  }
+  editFromDrawer = false;
+}
+
 function cancelEdit() {
   editingTaskId = null;
   document.getElementById('f-name').value = '';
   selectType('habit');
   refreshFormHeader();
-  window.scrollTo({ top: editScrollY, behavior: 'smooth' });
+  restoreAfterEdit();
 }
 
 let editingTaskId = null;
@@ -942,7 +953,6 @@ function renderAllTasksContent() {
       '<button class="swipe-delete-bg" onclick="deleteTask(\'' + t.id + '\')">删除</button>' +
       '<div class="swipe-content at-row">' +
         '<span class="at-name' + (t.done ? ' done' : '') + '">' + escapeHtml(t.name) + '</span>' +
-        '<span class="at-meta">' + taskMetaText(t) + '</span>' +
       '</div>' +
     '</div>';
   }
@@ -962,7 +972,7 @@ function renderAllTasksContent() {
 
 function startEditFromDrawer(id) {
   closeAllTasks();
-  setTimeout(() => startEdit(id), 260);
+  setTimeout(() => startEdit(id, true), 260);
 }
 
 function openAllTasks() {
@@ -1001,8 +1011,25 @@ function attachSwipeHandlers(root) {
     row.dataset.swipeBound = '1';
     const content = row.querySelector('.swipe-content');
     const hasEdit = !!row.querySelector('.swipe-edit-bg');
+    const basePL = parseFloat(getComputedStyle(content).paddingLeft) || 0;
+    const basePR = parseFloat(getComputedStyle(content).paddingRight) || 0;
     let startX = 0, startY = 0, currentX = 0, dragging = false, decided = false, isHorizontal = false;
     const ACTION_WIDTH = 72;
+
+    function applyOffset(x) {
+      // Instead of translating the whole content (which pushes text off-screen),
+      // squeeze it via padding so child elements (checkbox, text) reflow and stay visible.
+      if (x < 0) {
+        content.style.paddingRight = (basePR - x) + 'px';
+        content.style.paddingLeft = basePL + 'px';
+      } else if (x > 0) {
+        content.style.paddingLeft = (basePL + x) + 'px';
+        content.style.paddingRight = basePR + 'px';
+      } else {
+        content.style.paddingLeft = basePL + 'px';
+        content.style.paddingRight = basePR + 'px';
+      }
+    }
 
     content.addEventListener('touchstart', (e) => {
       startX = e.touches[0].clientX;
@@ -1029,30 +1056,34 @@ function attachSwipeHandlers(root) {
       const minX = -ACTION_WIDTH - 20;
       const maxX = hasEdit ? ACTION_WIDTH + 20 : 0;
       currentX = Math.min(maxX, Math.max(dx, minX));
-      content.style.transform = 'translateX(' + currentX + 'px)';
+      applyOffset(currentX);
     }, { passive: true });
 
     content.addEventListener('touchend', () => {
       dragging = false;
-      content.style.transition = 'transform 0.15s ease-out';
+      content.style.transition = 'padding 0.15s ease-out';
       if (isHorizontal && currentX < -ACTION_WIDTH / 2) {
         closeAllSwipes(row);
-        content.style.transform = 'translateX(-' + ACTION_WIDTH + 'px)';
+        applyOffset(-ACTION_WIDTH);
       } else if (isHorizontal && hasEdit && currentX > ACTION_WIDTH / 2) {
         closeAllSwipes(row);
-        content.style.transform = 'translateX(' + ACTION_WIDTH + 'px)';
+        applyOffset(ACTION_WIDTH);
       } else {
-        content.style.transform = 'translateX(0)';
+        applyOffset(0);
       }
     });
+
+    row._resetSwipe = () => {
+      content.style.transition = 'padding 0.15s ease-out';
+      applyOffset(0);
+    };
   });
 }
 
 function closeAllSwipes(exceptRow) {
   document.querySelectorAll('.swipe-row').forEach(r => {
     if (r === exceptRow) return;
-    const c = r.querySelector('.swipe-content');
-    if (c) { c.style.transition = 'transform 0.15s ease-out'; c.style.transform = 'translateX(0)'; }
+    if (r._resetSwipe) r._resetSwipe();
   });
 }
 
