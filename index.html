@@ -128,7 +128,9 @@
   #auth-screen p { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
   #signin-btn { background: var(--info-text); color: white; border: none; padding: 12px 24px; border-radius: var(--radius-md); font-size: 15px; }
 
-  .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; min-height: 20px; font-size: 12px; color: var(--text-tertiary); }
+  .header-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 16px; min-height: 20px; font-size: 12px; color: var(--text-tertiary); }
+  .header-bar #sync-indicator { text-align: center; }
+  .header-bar .signout-link { justify-self: end; }
   .signout-link { font-size: 12px; color: var(--text-tertiary); background: none; border: none; padding: 0; text-decoration: underline; }
 </style>
 </head>
@@ -143,6 +145,7 @@
 
   <div id="app-screen" style="display:none;">
     <div class="header-bar">
+      <span></span>
       <span id="sync-indicator"></span>
       <button class="signout-link" onclick="handleSignOut()">退出登录</button>
     </div>
@@ -310,7 +313,7 @@ async function loadFromDrive() {
 }
 
 function scheduleSave() {
-  setSyncStatus('保存中…');
+  setSyncStatus('咪在递交文件…');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveToDrive, 600);
 }
@@ -334,7 +337,7 @@ async function saveToDrive() {
         body: content
       });
     }
-    setSyncStatus('已同步');
+    setSyncStatus('交好啦');
     setTimeout(() => setSyncStatus(''), 1200);
   } catch (e) {
     console.error(e);
@@ -440,9 +443,9 @@ function urgencyColor(urgency, done) {
   return 'var(--text-secondary)';
 }
 function typeLabel(type, recurring) {
-  if (type === 'window') return recurring ? '循环窗口' : '窗口';
-  if (type === 'quota') return recurring === false ? '配额' : '配额(循环)';
-  return { habit: '习惯', once: '一次性', anniversary: '纪念日' }[type] || type;
+  if (type === 'window') return recurring ? '一段时间循环' : '一段时间';
+  if (type === 'quota') return recurring === false ? '慢慢来喵' : '慢慢习惯喵';
+  return { habit: '习惯', once: '一次性', anniversary: '纪念日喵！！' }[type] || type;
 }
 
 function typeBg(type) {
@@ -491,17 +494,17 @@ function renderToday() {
   const { habits, anniversaries, others } = getTodayItems();
   let html = '';
   if (anniversaries.length) {
-    html += '<div class="section-label">临近的纪念日</div>';
+    html += '<div class="section-label">注意注意！</div>';
     anniversaries.forEach(t => html += renderAnniversaryRow(t));
   }
   if (habits.length) {
-    html += '<div class="section-label">今天的习惯</div>';
+    html += '<div class="section-label">加油干啊咪</div>';
     habits.forEach(t => html += renderRow(t, null, true));
   }
   if (others.length === 0 && habits.length === 0 && anniversaries.length === 0) {
     html += '<div class="empty-state">还没有任务，点下面添加一个</div>';
   } else if (others.length) {
-    html += '<div class="section-label">需要关注的事</div>';
+    html += '<div class="section-label">干活啦</div>';
     others.forEach(o => html += renderRow(o.t, o.label, false, o.urgency));
   }
   return html;
@@ -526,11 +529,15 @@ function getGanttRange() {
 
 const BAR_H = 18;
 function dateLabelHtml(offsetPct, text, centerOffsetPx) {
-  let transform = 'translateX(-50%)';
-  let leftExpr = 'calc(' + offsetPct + '%' + (centerOffsetPx ? ' + ' + centerOffsetPx + 'px' : '') + ')';
-  if (offsetPct < 8) { transform = 'translateX(0%)'; leftExpr = offsetPct + '%'; }
-  else if (offsetPct > 92) { transform = 'translateX(-100%)'; leftExpr = 'calc(' + offsetPct + '%' + (centerOffsetPx ? ' + ' + (centerOffsetPx*2) + 'px' : '') + ')'; }
-  return '<div style="position:absolute;left:' + leftExpr + ';top:' + (BAR_H+4) + 'px;transform:' + transform + ';font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
+  const offset = centerOffsetPx || 0;
+  if (offsetPct < 8) {
+    return '<div style="position:absolute;left:0;top:' + (BAR_H+4) + 'px;font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
+  }
+  if (offsetPct > 92) {
+    return '<div style="position:absolute;right:0;top:' + (BAR_H+4) + 'px;font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
+  }
+  const leftExpr = 'calc(' + offsetPct + '%' + (offset ? ' + ' + offset + 'px' : '') + ')';
+  return '<div style="position:absolute;left:' + leftExpr + ';top:' + (BAR_H+4) + 'px;transform:translateX(-50%);font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
 }
 
 function renderGantt() {
@@ -571,7 +578,7 @@ function renderGantt() {
 
     html += '<div style="margin-bottom:' + (showDate ? 26 : 14) + 'px;">';
     html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:3px;display:flex;justify-content:space-between;gap:8px;">' +
-      '<span style="min-width:0;max-width:60%;word-break:break-word;">' + escapeHtml(t.name) + (t.type==='quota' ? ' · ' + t.progress + '/' + t.target : '') + '</span>' +
+      '<span style="min-width:0;max-width:75%;word-break:break-word;">' + escapeHtml(t.name) + (t.type==='quota' ? ' · ' + t.progress + '/' + t.target : '') + '</span>' +
       '<span style="flex-shrink:0;">' + typeLabel(t.type, t.recurring) + '</span></div>';
     html += '<div style="position:relative;height:' + BAR_H + 'px;">';
     if (t.type === 'once') {
@@ -600,8 +607,8 @@ function renderGantt() {
 
 function typeOptions() {
   const opts = [
-    { v: 'habit', label: '习惯' }, { v: 'window', label: '窗口' }, { v: 'quota', label: '配额' },
-    { v: 'once', label: '一次性' }, { v: 'anniversary', label: '纪念日' }
+    { v: 'habit', label: '每天都要干的事情喵' }, { v: 'window', label: '这段时间要做什么捏' }, { v: 'quota', label: '给你穿宽松一点喵' },
+    { v: 'once', label: '这天必须要去做的事喵' }, { v: 'anniversary', label: '纪念日喵！！' }
   ];
   return '<div class="type-grid">' +
     opts.map(o => '<button type="button" class="type-btn' + (selectedType===o.v?' active':'') + '" data-type="' + o.v + '" onclick="selectType(\'' + o.v + '\')">' + o.label + '</button>').join('') +
@@ -712,7 +719,7 @@ function submitForm() {
 
 function renderForm() {
   return '<div class="form-card">' +
-    '<div class="section-label">添加任务</div>' +
+    '<div class="section-label">新的任务咪</div>' +
     '<input type="text" id="f-name" placeholder="任务名称" autocomplete="off" style="margin-bottom:10px;" />' +
     typeOptions() +
     '<div id="f-extra"></div>' +
@@ -742,7 +749,7 @@ function render() {
   app.innerHTML =
     '<div class="top-tabs">' +
       '<div class="tab-slider" id="tab-slider" style="transform:' + (currentView==='today' ? 'translateX(0)' : 'translateX(calc(100% + 4px))') + ';"></div>' +
-      tab('today','今天') + tab('overview','总览') +
+      tab('today','今天干什么捏') + tab('overview','Gantt') +
     '</div>' +
     '<div id="main-content"></div>' +
     renderForm();
