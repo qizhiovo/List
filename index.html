@@ -110,11 +110,11 @@
 
   .section-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; margin-top: 4px; }
 
-  .form-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-top: 32px; background: var(--bg-card); }
+  .form-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-top: 56px; background: var(--bg-card); }
   .form-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
   .form-title { font-size: 15px; font-weight: 600; color: var(--text); }
   .form-title-actions { display: flex; gap: 6px; flex-shrink: 0; }
-  .confirm-btn { background: #f1908c; color: white; border: none; padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
+  .confirm-btn { background: #51c4d3; color: white; border: none; padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
   .confirm-btn.editing { background: #66c18c; }
   .cancel-edit-btn { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
   .type-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
@@ -138,7 +138,7 @@
   .header-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 16px; min-height: 20px; font-size: 12px; color: var(--text-tertiary); }
   .header-bar #sync-indicator { text-align: center; }
   .header-bar .signout-link { justify-self: end; }
-  .header-bar .icon-btn { justify-self: start; border: none; background: none; padding: 0; font-size: 40px; line-height: 1; color: #f28e16; }
+  .header-bar .icon-btn { justify-self: start; border: none; background: none; padding: 0; font-size: 20px; line-height: 1; color: #f28e16; }
 
   #drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 90; }
   #drawer-overlay.open { opacity: 1; pointer-events: auto; }
@@ -146,7 +146,7 @@
   #all-tasks-drawer.open { transform: translateX(0); }
   .drawer-header { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
   .at-section-label { font-size: 12px; color: var(--text-secondary); margin: 16px 0 8px; }
-  .at-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; width: 100%; box-sizing: border-box; background-color: var(--bg); }
+  .at-row { display: flex; align-items: center; gap: 8px; padding: 8px 16px; width: 100%; box-sizing: border-box; background-color: var(--bg); }
   .at-row .at-name { flex: 1; min-width: 0; font-size: 14px; word-break: break-word; }
   .at-row .at-name.done { color: var(--text-tertiary); text-decoration: line-through; }
   .at-row .at-meta { font-size: 11px; color: var(--text-tertiary); flex-shrink: 0; text-align: right; }
@@ -166,7 +166,7 @@
 
   <div id="app-screen" style="display:none;">
     <div class="header-bar">
-      <button class="icon-btn" onclick="openAllTasks()" aria-label="查看全部任务">⚱︎</button>
+      <button class="icon-btn" onclick="openAllTasks()" aria-label="查看全部任务">💛</button>
       <span id="sync-indicator"></span>
       <button class="signout-link" onclick="handleSignOut()">退出登录</button>
     </div>
