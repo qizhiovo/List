@@ -29,6 +29,9 @@
     --danger-text: #a32d2d;
     --habit-bg: #fbe6ec;
     --habit-text: #b13e63;
+    --action-delete: #ef6f48;
+    --action-edit: #66c18c;
+    --action-confirm: #51c4d3;
     --radius-md: 8px;
     --radius-lg: 12px;
   }
@@ -54,6 +57,9 @@
       --danger-text: #e3958f;
       --habit-bg: #3a2230;
       --habit-text: #e497b3;
+      --action-delete: #b8543a;
+      --action-edit: #4a8f68;
+      --action-confirm: #3c93a0;
     }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -105,8 +111,8 @@
 
   .swipe-row { position: relative; margin-bottom: 6px; border-radius: var(--radius-md); clip-path: inset(0); }
   .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; left: 0; width: 100%; box-sizing: border-box; background-color: var(--bg); transition: left 0.15s ease-out, width 0.15s ease-out, min-height 0.15s ease-out; touch-action: pan-y; z-index: 2; min-height: 38px; }
-  .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: #ef6f48; color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
-  .swipe-edit-bg { position: absolute; left: 0; top: 0; bottom: 0; width: 72px; background: #66c18c; color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
+  .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--action-delete); color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
+  .swipe-edit-bg { position: absolute; left: 0; top: 0; bottom: 0; width: 72px; background: var(--action-edit); color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
   .check-btn { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
   .check-btn.done { background: var(--bg-secondary); border-color: var(--border); color: var(--text-tertiary); }
   .row-title { font-size: 15px; flex: 1; min-width: 0; }
@@ -119,8 +125,8 @@
   .form-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
   .form-title { font-size: 15px; font-weight: 600; color: var(--text); }
   .form-title-actions { display: flex; gap: 6px; flex-shrink: 0; }
-  .confirm-btn { background: #51c4d3; color: white; border: none; padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
-  .confirm-btn.editing { background: #66c18c; }
+  .confirm-btn { background: var(--action-confirm); color: white; border: none; padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
+  .confirm-btn.editing { background: var(--action-edit); }
   .cancel-edit-btn { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
   .type-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
   .type-btn { padding: 10px 12px; border-radius: var(--radius-md); font-size: 14px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); text-align: left; }
@@ -563,14 +569,17 @@ function getGanttRange() {
 const BAR_H = 18;
 function dateLabelHtml(offsetPct, text, centerOffsetPx) {
   const offset = centerOffsetPx || 0;
-  if (offsetPct < 8) {
-    return '<div style="position:absolute;left:0;top:' + (BAR_H+4) + 'px;font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
-  }
-  if (offsetPct > 92) {
-    return '<div style="position:absolute;right:0;top:' + (BAR_H+4) + 'px;font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
-  }
-  const leftExpr = 'calc(' + offsetPct + '%' + (offset ? ' + ' + offset + 'px' : '') + ')';
-  return '<div style="position:absolute;left:' + leftExpr + ';top:' + (BAR_H+4) + 'px;transform:translateX(-50%);font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
+  // Clamp the label's horizontal position so it never overflows the chart's
+  // edges, but anchor it relative to the bar's own position (offsetPct)
+  // rather than snapping all the way to the container edge — that produced
+  // a label that looked disconnected from its bar when the bar itself was
+  // near (but not exactly at) the edge.
+  const clampedPct = Math.max(4, Math.min(offsetPct, 96));
+  const leftExpr = 'calc(' + clampedPct + '%' + (offset ? ' + ' + offset + 'px' : '') + ')';
+  let transform = 'translateX(-50%)';
+  if (clampedPct <= 4) transform = 'translateX(0%)';
+  else if (clampedPct >= 96) transform = 'translateX(-100%)';
+  return '<div style="position:absolute;left:' + leftExpr + ';top:' + (BAR_H+4) + 'px;transform:' + transform + ';font-size:11px;color:var(--text-tertiary);white-space:nowrap;">' + text + '</div>';
 }
 
 function renderGantt() {
@@ -984,12 +993,26 @@ function openAllTasks() {
   attachSwipeHandlers();
   document.getElementById('all-tasks-drawer').classList.add('open');
   document.getElementById('drawer-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.body.style.touchAction = 'none';
+  drawerOpen = true;
 }
 
 function closeAllTasks() {
   document.getElementById('all-tasks-drawer').classList.remove('open');
   document.getElementById('drawer-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  document.body.style.touchAction = '';
+  drawerOpen = false;
 }
+
+let drawerOpen = false;
+document.addEventListener('touchmove', (e) => {
+  if (!drawerOpen) return;
+  const drawer = document.getElementById('all-tasks-drawer');
+  if (drawer && drawer.contains(e.target)) return;
+  e.preventDefault();
+}, { passive: false });
 
 window.openAllTasks = openAllTasks;
 window.closeAllTasks = closeAllTasks;
