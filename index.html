@@ -100,8 +100,8 @@
 
   .swipe-row { position: relative; margin-bottom: 6px; border-radius: var(--radius-md); clip-path: inset(0); }
   .swipe-content { display: flex; align-items: center; gap: 10px; padding: 10px 0; position: relative; width: 100%; box-sizing: border-box; background-color: var(--bg); transition: transform 0.15s ease-out; touch-action: pan-y; z-index: 2; }
-  .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--danger-text); color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
-  .swipe-edit-bg { position: absolute; left: 0; top: 0; bottom: 0; width: 72px; background: var(--info-text); color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
+  .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: #ef6f48; color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
+  .swipe-edit-bg { position: absolute; left: 0; top: 0; bottom: 0; width: 72px; background: #66c18c; color: white; border: none; font-size: 14px; cursor: pointer; z-index: 1; }
   .check-btn { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; border: 1.5px solid var(--border-strong); background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; }
   .check-btn.done { background: var(--bg-secondary); border-color: var(--border); color: var(--text-tertiary); }
   .row-title { font-size: 15px; flex: 1; min-width: 0; }
@@ -114,7 +114,8 @@
   .form-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
   .form-title { font-size: 15px; font-weight: 600; color: var(--text); }
   .form-title-actions { display: flex; gap: 6px; flex-shrink: 0; }
-  .confirm-btn { background: var(--info-text); color: white; border: none; padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
+  .confirm-btn { background: #f1908c; color: white; border: none; padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
+  .confirm-btn.editing { background: #66c18c; }
   .cancel-edit-btn { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); padding: 8px 14px; border-radius: var(--radius-md); font-size: 13px; }
   .type-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
   .type-btn { padding: 10px 12px; border-radius: var(--radius-md); font-size: 14px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); text-align: left; }
@@ -137,7 +138,7 @@
   .header-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 16px; min-height: 20px; font-size: 12px; color: var(--text-tertiary); }
   .header-bar #sync-indicator { text-align: center; }
   .header-bar .signout-link { justify-self: end; }
-  .header-bar .icon-btn { justify-self: start; border: none; background: none; padding: 0; font-size: 20px; line-height: 1; }
+  .header-bar .icon-btn { justify-self: start; border: none; background: none; padding: 0; font-size: 20px; line-height: 1; color: #f28e16; }
 
   #drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 90; }
   #drawer-overlay.open { opacity: 1; pointer-events: auto; }
@@ -164,7 +165,7 @@
 
   <div id="app-screen" style="display:none;">
     <div class="header-bar">
-      <button class="icon-btn" onclick="openAllTasks()" aria-label="查看全部任务">💭</button>
+      <button class="icon-btn" onclick="openAllTasks()" aria-label="查看全部任务">⚱︎</button>
       <span id="sync-indicator"></span>
       <button class="signout-link" onclick="handleSignOut()">退出登录</button>
     </div>
@@ -781,7 +782,7 @@ function refreshFormHeader() {
     '<span class="form-title">' + (editingTaskId ? '修改行动计划中...' : '新的任务咪') + '</span>' +
     '<div class="form-title-actions">' +
       (editingTaskId ? '<button class="cancel-edit-btn" onclick="cancelEdit()">不要了</button>' : '') +
-      '<button class="confirm-btn" onclick="submitForm()">确认喵</button>' +
+      '<button class="confirm-btn' + (editingTaskId ? ' editing' : '') + '" onclick="submitForm()">确认喵</button>' +
     '</div>';
 }
 
@@ -811,9 +812,13 @@ function fillFormForEdit(t) {
   }
 }
 
+let editScrollY = 0;
+
 function startEdit(id) {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
+  editScrollY = window.scrollY;
+  closeAllSwipes(null);
   editingTaskId = id;
   fillFormForEdit(t);
   refreshFormHeader();
@@ -826,6 +831,7 @@ function cancelEdit() {
   document.getElementById('f-name').value = '';
   selectType('habit');
   refreshFormHeader();
+  window.scrollTo({ top: editScrollY, behavior: 'smooth' });
 }
 
 let editingTaskId = null;
@@ -837,7 +843,7 @@ function renderForm() {
       '<span class="form-title">' + title + '</span>' +
       '<div class="form-title-actions">' +
         (editingTaskId ? '<button class="cancel-edit-btn" onclick="cancelEdit()">不要了</button>' : '') +
-        '<button class="confirm-btn" onclick="submitForm()">确认喵</button>' +
+        '<button class="confirm-btn' + (editingTaskId ? ' editing' : '') + '" onclick="submitForm()">确认喵</button>' +
       '</div>' +
     '</div>' +
     '<input type="text" id="f-name" placeholder="任务名称" autocomplete="off" style="margin-bottom:10px;" />' +
